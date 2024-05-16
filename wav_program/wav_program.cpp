@@ -5,28 +5,42 @@
 #include "Signal.h"
 #include "math.h"
 #include "fft.h"
+#include "matplotlibcpp.h"
+
 int main()
 {
-    int n = 4096;
-    double a[9192];
-    double omega = 3.14 / 6.0;
-    for (int i = 0;i < n;i++) {
-        a[i] = sin(i * omega) + sin(i * omega * 2);
-    }
-
-    int* ip = new int[2+(int)sqrt(0.5*n)+1];
-    double* w = new double[n * 5 / 4];
-    ip[0] = 0;
-    cdft(n * 2,1,a,ip, w);
-
+    int n = 8192;
+    vector<double> a(n);
     
-    for (int i = 0;i < n;i++) {
-        std::cout << "Re:" << a[i * 2] << " Im:" << a[i * 2 + 1] << endl;
+    std::vector<double>y(n/2);
+    std::vector<double>x(n / 2);
+
+    double omega = 3.1415;
+    double T = 0.001;
+    for (int i = 0; i < n / 2; i++) {
+        a[2 * i] = sin(i * omega * T) + 2*sin(i * omega * 30 * T);
+        a[2 * i + 1] = 0;
+        y[i] = a[2 * i];
+        x[i] = n*T * i;
     }
+    
+    
+    int* ip = new int[2+(int)sqrt(0.5*n)+1];
+    vector<double> w(n * 5 / 4);
+    ip[0] = 0;
+    cdft(n ,-1,a,ip, w);
 
-
-    Signal signal("Tvtokyo.wav");
-    std::cout << "Hello World!\n";
+    for (int i = 0; i < n / 2; i++) {
+        std::cout << "Re:" << a[i * 2] << "Im:" << a[2 * i + 1] << endl;
+        y[i] = sqrt(a[i * 2] * a[i * 2] + a[i * 2 + 1] * a[i * 2 + 1]);
+    }
+    
+    matplotlibcpp::plot(x, y);
+    matplotlibcpp::show();
+    
+    
+    //Signal signal("Tvtokyo.wav");
+    //std::cout << "Hello World!\n";
 }
 
 // プログラムの実行: Ctrl + F5 または [デバッグ] > [デバッグなしで開始] メニュー

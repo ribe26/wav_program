@@ -17,13 +17,13 @@ ip:int型ポインタ
 w :cos/sinテーブル
 ↑ip[0]=0のに初期化される
 */
-void cdft(int n, int isgn, double* a, int* ip, double* w)
+void cdft(int n, int isgn, vector<double>& a, int* ip, vector<double>& w)
 {
-    void makewt(int nw, int* ip, double* w);
-    void bitrv2(int n, int* ip, double* a);
-    void bitrv2conj(int n, int* ip, double* a);
-    void cftfsub(int n, double* a, double* w);
-    void cftbsub(int n, double* a, double* w);
+    void makewt(int nw, int* ip, vector<double>& w);
+    void bitrv2(int n, int* ip, vector<double>& a);
+    void bitrv2conj(int n, int* ip, vector<double>& a);
+    void cftfsub(int n, vector<double>& a, vector<double>& w);
+    void cftbsub(int n, vector<double>& a, vector<double>& w);
 
     if (n > (ip[0] << 2)) {
         makewt(n >> 2, ip, w);
@@ -46,9 +46,9 @@ void cdft(int n, int isgn, double* a, int* ip, double* w)
 
 #include <math.h>
 
-void makewt(int nw, int* ip, double* w)
+void makewt(int nw, int* ip, vector<double>& w)
 {
-    void bitrv2(int n, int* ip, double* a);
+    void bitrv2(int n, int* ip, vector<double>& a);
     int j, nwh;
     double delta, x, y;
 
@@ -79,7 +79,7 @@ void makewt(int nw, int* ip, double* w)
 /* -------- child routines -------- */
 
 
-void bitrv2(int n, int* ip, double* a)
+void bitrv2(int n, int* ip, vector<double>& a)
 {
     int j, j1, k, k1, l, m, m2;
     double xr, xi, yr, yi;
@@ -180,7 +180,7 @@ void bitrv2(int n, int* ip, double* a)
 }
 
 
-void bitrv2conj(int n, int* ip, double* a)
+void bitrv2conj(int n, int* ip, vector<double>& a)
 {
     int j, j1, k, k1, l, m, m2;
     double xr, xi, yr, yi;
@@ -290,10 +290,10 @@ void bitrv2conj(int n, int* ip, double* a)
 }
 
 
-void cftfsub(int n, double* a, double* w)
+void cftfsub(int n, vector<double>& a, vector<double>& w)
 {
-    void cft1st(int n, double* a, double* w);
-    void cftmdl(int n, int l, double* a, double* w);
+    void cft1st(int n, vector<double>& a, vector<double>& w);
+    void cftmdl(int n, int l, vector<double>& a, vector<double>& w);
     int j, j1, j2, j3, l;
     double x0r, x0i, x1r, x1i, x2r, x2i, x3r, x3i;
 
@@ -343,10 +343,10 @@ void cftfsub(int n, double* a, double* w)
 }
 
 
-void cftbsub(int n, double* a, double* w)
+void cftbsub(int n, vector<double>& a, vector<double>& w)
 {
-    void cft1st(int n, double* a, double* w);
-    void cftmdl(int n, int l, double* a, double* w);
+    void cft1st(int n, vector<double>& a, vector<double>& w);
+    void cftmdl(int n, int l, vector<double>& a, vector<double>& w);
     int j, j1, j2, j3, l;
     double x0r, x0i, x1r, x1i, x2r, x2i, x3r, x3i;
 
@@ -395,7 +395,7 @@ void cftbsub(int n, double* a, double* w)
     }
 }
 
-void cft1st(int n, double* a, double* w)
+void cft1st(int n, vector<double>& a, vector<double>& w)
 {
     int j, k1, k2;
     double wk1r, wk1i, wk2r, wk2i, wk3r, wk3i;
@@ -500,7 +500,7 @@ void cft1st(int n, double* a, double* w)
 }
 
 
-void cftmdl(int n, int l, double* a, double* w)
+void cftmdl(int n, int l, vector<double>& a, vector<double>& w)
 {
     int j, j1, j2, j3, k, k1, k2, m, m2;
     double wk1r, wk1i, wk2r, wk2i, wk3r, wk3i;

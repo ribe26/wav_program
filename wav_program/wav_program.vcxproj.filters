@@ -38,6 +38,9 @@
     <ClInclude Include="fft.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="matplotlibcpp.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Media Include="Tvtokyo.wav">
