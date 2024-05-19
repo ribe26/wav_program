@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include "Spectrum.h"
+#include "matplotlibcpp.h"
 
 
 
@@ -17,6 +18,22 @@ Signal::Signal(Spectrum sperctum){
 }
 */
 
+
+void Signal::show(){
+    unsigned long n = dataL.size();
+
+    vector<double> plot_x(n / 2);
+    vector<double> plot_y(n / 2);
+
+    for (int i = 0; i < n / 2; i++) {
+        plot_x[i] = i;
+        plot_y[i] = dataL[2 * i];
+    }
+
+    matplotlibcpp::plot(plot_x, plot_y);
+    matplotlibcpp::show();
+
+}
 
 
 //wavファイル関係
@@ -138,6 +155,7 @@ int Signal::read8BitWavMonaural(FILE* fpIn)
             return -1;
 
         this->dataL.push_back(In);
+        this->dataL.push_back(0.0);
     }
     return 0;
 }
@@ -154,7 +172,9 @@ int Signal::read8BitWavStereo(FILE* fpIn)
             return -1;
 
         this->dataL.push_back(In[0]);
+        this->dataL.push_back(0.0);
         this->dataR.push_back(In[1]);
+        this->dataR.push_back(0.0);
     }
     return 0;
 }
@@ -172,6 +192,7 @@ int Signal::read16BitWavMonaural(FILE* fpIn)
             return -1;
 
         this->dataL.push_back(In);
+        this->dataL.push_back(0.0);
     }
 
     return 0;
@@ -188,7 +209,9 @@ int Signal::read16BitWavStereo(FILE* fpIn)
             return -1;
 
         this->dataL.push_back(In[0]);
+        this->dataL.push_back(0.0);
         this->dataR.push_back(In[1]);
+        this->dataR.push_back(0.0);
     }
     return 0;
 }

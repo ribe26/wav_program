@@ -4,52 +4,116 @@
 #include <iostream>
 #include "Signal.h"
 #include "math.h"
-#include "fft.h"
+#include "FFT.h"
 #include "matplotlibcpp.h"
-
+#include <vector>
+#include "Spectrum.h"
 int main()
-{
-    int n = 8192;
+{   
+    /*
+    int n = 512;
     vector<double> a(n);
-    
-    std::vector<double>y(n/2);
-    std::vector<double>x(n / 2);
+    vector<double> a2(n);
+    double sinF = 5000.0;
 
-    double omega = 3.1415;
-    double T = 0.001;
+    double omega = 2*3.1415*sinF;
+    double F = 44100;
+    double T = 1.0/F;
     for (int i = 0; i < n / 2; i++) {
-        a[2 * i] = sin(i * omega * T) + 2*sin(i * omega * 30 * T);
+        a[2 * i] = sin(i * omega * T) + sin(i * omega * 2 * T);
         a[2 * i + 1] = 0;
-        y[i] = a[2 * i];
-        x[i] = n*T * i;
     }
-    
+
+
+    sinF = 2500.0;
+    omega = 2 * 3.1415 * sinF;
+    for (int i = 0; i < n / 2; i++) {
+        a2[2 * i] = sin(i * omega * T) + sin(i * omega * 2 * T);
+        a2[2 * i + 1] = 0;
+    }
+
+
+    std::vector<double>plot_y(n / 2);
+    std::vector<double>plot_x(n / 2);
+
+    for (int i = 0; i < n / 2; i++) {
+        plot_y[i] = a[2 * i];
+        plot_x[i] = i;
+    }
+    matplotlibcpp::plot(plot_x, plot_y);
+    matplotlibcpp::show();
+
+    for (int i = 0; i < n / 2; i++) {
+        plot_y[i] = a2[2 * i];
+    }
+    matplotlibcpp::plot(plot_x, plot_y);
+    matplotlibcpp::show();
     
     int* ip = new int[2+(int)sqrt(0.5*n)+1];
     vector<double> w(n * 5 / 4);
     ip[0] = 0;
-    cdft(n ,-1,a,ip, w);
+    cdft(n ,-1,&a[0], ip, &w[0]);
 
+    //ip[0] = 0;
+    cdft(n, -1, &a2[0], ip, &w[0]);
+
+    
+    std::vector<double>plot_y2(n/4);
+    std::vector<double>plot_x2(n/4);
+    for (int i = 0; i < n / 4; i++) {
+        plot_y2[i]=sqrt(a[2*i]*a[2*i]+a[2*i+1]*a[2*i+1]);
+    }
+
+
+    for (int i = 0; i < n / 4;i++) {
+        plot_x2[i] = F/(n/2)*i;
+    }
+
+
+    matplotlibcpp::plot(plot_x2, plot_y2);
+    matplotlibcpp::show();
+
+    for (int i = 0; i < n / 4; i++) {
+        plot_y2[i] = sqrt(a2[2 * i] * a2[2 * i] + a2[2 * i + 1] * a2[2 * i + 1]);
+    }
+
+    matplotlibcpp::plot(plot_x2, plot_y2);
+    matplotlibcpp::show();
+
+
+    cdft(n, 1, &a[0], ip, &w[0]);
+    for (int i = 0; i < n; i++) {
+        a[i] /= (n/2);
+    }
+
+  
+    
     for (int i = 0; i < n / 2; i++) {
-        std::cout << "Re:" << a[i * 2] << "Im:" << a[2 * i + 1] << endl;
-        y[i] = sqrt(a[i * 2] * a[i * 2] + a[i * 2 + 1] * a[i * 2 + 1]);
+        plot_y[i] = a[2 * i];
+        plot_x[i] = i;
     }
     
-    matplotlibcpp::plot(x, y);
+
+    matplotlibcpp::plot(plot_x, plot_y);
     matplotlibcpp::show();
+
+    */
+
+    /*
+
+    int* ip2 = new int[2 + (int)sqrt(0.5 * n) + 1];
+    vector<double> w2(n * 5 / 4);
+    rdft(n,1,&a[0], ip2, &w2[0]);
+
+    for (int i = 0; i < n; i++) {
+        cout << a[i] << endl;
+    }
+    */
     
     
-    //Signal signal("Tvtokyo.wav");
-    //std::cout << "Hello World!\n";
+    Signal signal("Tvtokyo.wav");
+    std::cout << "Hello World!\n";
+    signal.show();
+
+    Spectrum spec(signal);
 }
-
-// プログラムの実行: Ctrl + F5 または [デバッグ] > [デバッグなしで開始] メニュー
-// プログラムのデバッグ: F5 または [デバッグ] > [デバッグの開始] メニュー
-
-// 作業を開始するためのヒント: 
-//    1. ソリューション エクスプローラー ウィンドウを使用してファイルを追加/管理します 
-//   2. チーム エクスプローラー ウィンドウを使用してソース管理に接続します
-//   3. 出力ウィンドウを使用して、ビルド出力とその他のメッセージを表示します
-//   4. エラー一覧ウィンドウを使用してエラーを表示します
-//   5. [プロジェクト] > [新しい項目の追加] と移動して新しいコード ファイルを作成するか、[プロジェクト] > [既存の項目の追加] と移動して既存のコード ファイルをプロジェクトに追加します
-//   6. 後ほどこのプロジェクトを再び開く場合、[ファイル] > [開く] > [プロジェクト] と移動して .sln ファイルを選択します

@@ -17,8 +17,9 @@ public:
 	//スペクトルからIFFTによって生成
 	//Signal(class Spectrum);
 	
-private:
-	
+
+	void show();
+
 	//wavファイル読み込み関係
 	int readfmtChunk(FILE* fp, tWaveFormatPcm* waveFmtPcm);
 	int wavHdrRead(const char* in_wavefile);

@@ -27,6 +27,9 @@
     <ClCompile Include="wave_defs.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClCompile>
+    <ClCompile Include="FFT.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Signal.h">
@@ -35,7 +38,7 @@
     <ClInclude Include="Spectrum.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="fft.h">
+    <ClInclude Include="FFT.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
     <ClInclude Include="matplotlibcpp.h">

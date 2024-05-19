@@ -135,13 +135,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="FFT.cpp" />
     <ClCompile Include="Signal.cpp" />
     <ClCompile Include="Spectrum.cpp" />
     <ClCompile Include="wave_defs.h" />
     <ClCompile Include="wav_program.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="fft.h" />
+    <ClInclude Include="FFT.h" />
     <ClInclude Include="matplotlibcpp.h" />
     <ClInclude Include="Signal.h" />
     <ClInclude Include="Spectrum.h" />
