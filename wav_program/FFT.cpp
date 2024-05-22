@@ -17,7 +17,7 @@ a :データ群
 
 ip:int型ポインタ
 w :cos/sinテーブル
-↑ip[0]=0のに初期化される
+↑ip,wはip[0]=0のに初期化される
 */
 
 #include <vector>

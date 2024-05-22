@@ -5,7 +5,7 @@
 
 
 Spectrum::Spectrum(Signal signal) {
-	Fs = 44100;
+	Fs = signal.Fs;
 	FFT(signal);
 }
 
@@ -21,8 +21,24 @@ void Spectrum::FFT(Signal signal) {
 	dataL = signal.dataL;
 	dataR = signal.dataR;
 
-	cdft(data_length*2, -1, &dataL[0], ip, &w[0]);
-	cdft(data_length*2, -1, &dataR[0], ip, &w[0]);
+
+	//ƒf[ƒ^’·‚³‚ª2‚Ì‚×‚«æ‚Å‚È‚¯‚ê‚Î‚O–„‚ß‚·‚é
+	int count = 1;
+	if ((dataL.size() & dataL.size() - 1) != 0) {
+		while (count < dataL.size()) {
+			count *= 2;
+		}
+	}
+
+	while (dataL.size() < count) {
+		dataL.push_back(0.0);
+		dataR.push_back(0.0);
+	}
+
+	ip[0] = 0;
+	cdft(dataL.size(), -1, &dataL[0], ip, &w[0]);
+	ip[0] = 0;
+	cdft(dataR.size(), -1, &dataR[0], ip, &w[0]);
 	
 }
 

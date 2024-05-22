@@ -7,16 +7,19 @@
 class Signal
 {
 public:
-	unsigned long Fs;
+	unsigned int Fs;
 	std::vector<double> dataL;
 	std::vector<double> dataR;
 	
 
 	//wavファイルから生成
 	Signal(const char* filename);
+
 	//スペクトルからIFFTによって生成
-	//Signal(class Spectrum);
+	Signal(class Spectrum);
 	
+	//データから生成
+	Signal(vector<double>,double F);
 
 	void show();
 
@@ -31,6 +34,14 @@ public:
 
 	int readDataSub(FILE* fpIn);
 	int read(const char* in_wavfile);
+
+
+	int showWavdata();
+
+	//waveファイル書き込み
+	long wavHeaderWrite(FILE *fpIn);
+	int write16BitWav(FILE* fpOut);
+	int write(const char* outFile);
 
 	tWaveFormatPcm waveFormatpcm;
 	SWaveFileHeader waveFileheader;

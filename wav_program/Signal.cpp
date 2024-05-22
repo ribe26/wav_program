@@ -3,6 +3,8 @@
 #include <vector>
 #include "Spectrum.h"
 #include "matplotlibcpp.h"
+#include "wave_defs.h"
+#include "FFT.h"
 
 
 
@@ -13,10 +15,39 @@ Signal::Signal(const char* filename) {
 }
 
 
-/*
-Signal::Signal(Spectrum sperctum){
+Signal::Signal(vector<double> data,double F) {
+    Fs = F;
+    for (int i = 0; i < data.size(); i++) {
+        dataL.push_back(data[i]);
+        dataR.push_back(data[i]);
+        dataL.push_back(0.0);
+        dataR.push_back(0.0);
+    }
 }
-*/
+
+
+
+Signal::Signal(Spectrum spectrum){
+    Fs = spectrum.Fs;
+    dataL = spectrum.dataL;
+    dataR = spectrum.dataR;
+
+    int n = spectrum.dataL.size();
+    int* ip = new int[2 + (int)sqrt(0.5 * n) + 1];
+    vector<double> w(n * 5 / 4);
+
+    ip[0] = 0;
+    cdft(n, 1, &dataL[0], ip, &w[0]);
+    ip[0] = 0;
+    cdft(n, 1, &dataR[0], ip, &w[0]);
+
+
+    for (int i = 0; i < n; i++) {
+        dataL[i] /= (n / 2);
+        dataR[i] /= (n / 2);
+    }
+}
+
 
 
 void Signal::show(){
@@ -27,7 +58,7 @@ void Signal::show(){
 
     for (int i = 0; i < n / 2; i++) {
         plot_x[i] = i;
-        plot_y[i] = dataL[2 * i];
+        plot_y[i] = dataR[2 * i];
     }
 
     matplotlibcpp::plot(plot_x, plot_y);
@@ -114,6 +145,7 @@ int Signal::wavHdrRead(const char* in_wavefile)
             this->waveFormatpcm.formatTag = waveFmtPcm.formatTag;
             this->waveFormatpcm.channels = waveFmtPcm.channels;
             this->waveFormatpcm.samplesPerSec = waveFmtPcm.samplesPerSec;
+            this->Fs= waveFmtPcm.samplesPerSec;
             this->waveFormatpcm.bytesPerSec = waveFmtPcm.bytesPerSec;
             this->waveFormatpcm.blockAlign = waveFmtPcm.blockAlign;
             this->waveFormatpcm.bitsPerSample = waveFmtPcm.bitsPerSample;
@@ -154,8 +186,10 @@ int Signal::read8BitWavMonaural(FILE* fpIn)
         if (fread(&In, sizeof In, 1, fpIn) != 1)
             return -1;
 
-        this->dataL.push_back(In);
-        this->dataL.push_back(0.0);
+        this->dataL.push_back((double)(In-128.0));
+        this->dataL.push_back(0);
+        this->dataR.push_back((double)(In - 128.0));
+        this->dataR.push_back(0);
     }
     return 0;
 }
@@ -171,10 +205,10 @@ int Signal::read8BitWavStereo(FILE* fpIn)
         if (fread(In, sizeof In, 1, fpIn) != 1)
             return -1;
 
-        this->dataL.push_back(In[0]);
-        this->dataL.push_back(0.0);
-        this->dataR.push_back(In[1]);
-        this->dataR.push_back(0.0);
+        this->dataL.push_back((double)(In[0] - 128.0));
+        this->dataL.push_back(0);
+        this->dataR.push_back((double)(In[1] - 128.0));
+        this->dataR.push_back(0);
     }
     return 0;
 }
@@ -192,7 +226,9 @@ int Signal::read16BitWavMonaural(FILE* fpIn)
             return -1;
 
         this->dataL.push_back(In);
-        this->dataL.push_back(0.0);
+        this->dataL.push_back(0);
+        this->dataR.push_back(In);
+        this->dataR.push_back(0);
     }
 
     return 0;
@@ -209,13 +245,23 @@ int Signal::read16BitWavStereo(FILE* fpIn)
             return -1;
 
         this->dataL.push_back(In[0]);
-        this->dataL.push_back(0.0);
+        this->dataL.push_back(0);
         this->dataR.push_back(In[1]);
-        this->dataR.push_back(0.0);
+        this->dataR.push_back(0);
     }
     return 0;
 }
 
+
+int Signal::showWavdata() {
+    cout << waveFileheader.hdrRiff << endl;
+    cout << waveFileheader.sizeOfFile << endl;
+    cout << waveFileheader.hdrWave << endl;
+
+    cout << waveFormatpcm.formatTag << endl;
+
+
+}
 
 /*--------------------------------------------------------------------------
 * wav データをダンプ
@@ -275,4 +321,119 @@ int Signal::read(const char* in_wavefile)
     return 0;
 }
 
+/*waveファイル保存用関数*/
 
+
+
+long Signal::wavHeaderWrite(FILE* fp)
+{
+    unsigned short bytes;
+    WrSWaveFileHeader wrWavHdr;
+    //strncpy_s(wrWavHdr.hdrRiff, STR_RIFF, sizeof wrWavHdr.hdrRiff); // RIFF ヘッダ
+    wrWavHdr.hdrRiff[0]='R';
+    wrWavHdr.hdrRiff[1] = 'I';
+    wrWavHdr.hdrRiff[2] = 'F';
+    wrWavHdr.hdrRiff[3] = 'F';
+
+    wrWavHdr.sizeOfFile = sizeOfData + sizeof(wrWavHdr) - 8;      // ファイルサイズ
+
+    //strncpy_s(wrWavHdr.hdrWave, STR_WAVE, sizeof wrWavHdr.hdrWave); // WAVE ヘッダ
+    wrWavHdr.hdrWave[0] = 'W';
+    wrWavHdr.hdrWave[1] = 'A';
+    wrWavHdr.hdrWave[2] = 'V';
+    wrWavHdr.hdrWave[3] = 'E';
+
+    //strncpy_s(wrWavHdr.hdrFmt, STR_fmt, sizeof wrWavHdr.hdrFmt);    // fmt チャンク
+    wrWavHdr.hdrFmt[0] = 'f';
+    wrWavHdr.hdrFmt[1] = 'm';
+    wrWavHdr.hdrFmt[2] = 't';
+    wrWavHdr.hdrFmt[3] = ' ';
+
+    wrWavHdr.sizeOfFmt = 16;           // fmt チャンク,無圧縮wav は 16
+
+    wrWavHdr.stWaveFormat.formatTag = 1;                          // 無圧縮PCM = 1
+
+    wrWavHdr.stWaveFormat.channels = 2;                          // ch (mono=1, stereo=2)
+
+    wrWavHdr.stWaveFormat.samplesPerSec = Fs;               // sampleng rate(Hz)
+
+    wrWavHdr.stWaveFormat.bytesPerSec = 4*Fs;
+
+    wrWavHdr.stWaveFormat.blockAlign = 4;                // byte/サンプル*チャンネル
+
+    wrWavHdr.stWaveFormat.bitsPerSample = 16;               // bit/サンプル
+
+    //strncpy_s(wrWavHdr.hdrData, STR_data, sizeof wrWavHdr.hdrData); // dataチャンク
+    wrWavHdr.hdrData[0] = 'd';
+    wrWavHdr.hdrData[1] = 'a';
+    wrWavHdr.hdrData[2] = 't';
+    wrWavHdr.hdrData[3] = 'a';
+
+    wrWavHdr.sizeOfData = this->dataL.size()*2;              // データ長 (byte)
+
+    fwrite(&wrWavHdr, sizeof wrWavHdr, 1, fp);                  // write header
+
+    return ftell(fp);
+}
+
+
+/*--------------------------------------------------------------------------
+* 16 bits/sampling
+*/
+int Signal::write16BitWav(FILE* fpOut)
+{
+    cout << "called 16Bit stereo" << endl;
+    unsigned long  i;
+    short In[2];
+
+    for (i = 0; i < this->dataL.size()/2; i++)
+    {
+        In[0] = (short)this->dataL[i*2];    //Left
+        In[1] = (short)this->dataR[i*2];    //Right
+        //cout << In[0] << endl;
+        if (fwrite(In, sizeof In, 1, fpOut) != 1)
+            return -1;
+    }
+    return 0;
+}
+
+/*--------------------------------------------------------------------------
+* ファイル内容書き出し
+*
+* inFile:     input wav file, must be stereo wav file.
+* outFile:    output wav file, it only has left  channel.
+* sampRate:   sampling rate[Hz]
+* sampBits:   sampling bits / sec
+* posOfData:  strat position of data.
+* sizeOfData: size of data.
+*/
+int Signal::write(const char* outFile)
+{
+    FILE* fpOut;
+
+    if ((fopen_s(&fpOut,outFile, "wb")) != 0)
+    {
+        fprintf(stderr, "%s をオープンできません.¥n", outFile);
+        return -1;
+    }
+
+    // wav ヘッダ書き込み
+    if (wavHeaderWrite(fpOut) != 44)
+    {
+        fprintf(stderr, "ヘッダを書き込めません: %s¥n", outFile);
+        fclose(fpOut);
+        return -1;
+    }
+
+    // wav データ書き込み
+    if (write16BitWav(fpOut) != 0)
+    {
+        fprintf(stderr, "wavDataWriteでエラー発生.¥n");
+        fclose(fpOut);
+        return -1;
+    }
+
+    fclose(fpOut);
+
+    return 0;
+}
