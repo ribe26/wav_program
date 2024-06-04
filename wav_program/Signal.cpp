@@ -5,6 +5,7 @@
 #include "matplotlibcpp.h"
 #include "wave_defs.h"
 #include "FFT.h"
+#include "math.h"
 
 
 
@@ -66,8 +67,31 @@ void Signal::show(){
 
 }
 
+void Signal::normalize() {
+    double maxL = *max_element(this->dataL.begin(), this->dataL.end());
+    double minL = *min_element(this->dataL.begin(), this->dataL.end());
+    double normL;
+    if (abs(maxL) > abs(minL)) normL = abs(maxL);
+    else normL = abs(minL);
 
-//wavファイル関係
+
+    double maxR = *max_element(this->dataR.begin(), this->dataR.end());
+    double minR = *min_element(this->dataR.begin(), this->dataR.end());
+    double normR;
+    if (abs(maxR) > abs(minR)) normL = abs(maxR);
+    else normR = abs(minR);
+
+    for (auto& e : this->dataL) {
+        e /= normL;
+    }
+
+    for (auto& e : this->dataR) {
+        e /= normR;
+    }
+}
+
+
+//wavファイル関係----------------------------------------------------------------------
 
 int Signal::readfmtChunk(FILE* fp, tWaveFormatPcm* waveFmtPcm)
 {

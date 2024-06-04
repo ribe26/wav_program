@@ -31,9 +31,23 @@ int main()
     signal2.show();
     */
 
+
+    /*
     Signal signal("L-30e000a.wav");
+    signal.show();
     Spectrum spec(signal);
     spec.show();
+
+    Signal signal2(spec);
+    signal2.show();
+    cout << signal2.dataL.size() << endl;
+    */
+
+    Signal signal("Tvtokyo.wav");
+    signal.show();
+    signal.normalize();
+    signal.write("test.wav");
+    signal.show();
     //git test
     //Spectrum spec(signal);
 }

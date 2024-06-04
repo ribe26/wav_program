@@ -51,10 +51,17 @@ void Spectrum::show() {
 
 	for (long i = 0; i < data_length / 2; i++) {
 		plot_x[i] = Fs / data_length * i;
-		plot_y[i] = sqrt(dataL[2 * i] * dataL[2 * i] + dataL[2 * i + 1] * dataL[2 * i + 1]);
+		plot_y[i] = 20*log10(sqrt(dataL[2 * i] * dataL[2 * i] + dataL[2 * i + 1] * dataL[2 * i + 1]));
 	}
 
 	matplotlibcpp::plot(plot_x, plot_y);
 	matplotlibcpp::show();
+}
+
+void Spectrum::Conj() {
+	for (long i = 0;i < data_length;i++) {
+		dataL[i * 2 + 1] = dataL[i * 2 + 1] * -1;
+		dataR[i * 2 + 1] = dataR[i * 2 + 1] * -1;
+	}
 }
 

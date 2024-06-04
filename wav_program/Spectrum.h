@@ -15,6 +15,8 @@ public:
 	std::vector<double> dataR;
 	void FFT(class Signal signal);
 
+	void Conj();
+
 	void show();
 
 	tWaveFormatPcm waveFormatpcm;

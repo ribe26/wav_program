@@ -23,7 +23,9 @@ public:
 
 	void show();
 
-	//wavファイル読み込み関係
+	void normalize();
+
+	//wavファイル読み込み関係---------------------------------------------------------
 	int readfmtChunk(FILE* fp, tWaveFormatPcm* waveFmtPcm);
 	int wavHdrRead(const char* in_wavefile);
 
@@ -38,7 +40,7 @@ public:
 
 	int showWavdata();
 
-	//waveファイル書き込み
+	//waveファイル書き込み--------------------------------------------------------------
 	long wavHeaderWrite(FILE *fpIn);
 	int write16BitWav(FILE* fpOut);
 	int write(const char* outFile);
