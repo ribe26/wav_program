@@ -148,7 +148,11 @@
     <ClInclude Include="Spectrum.h" />
   </ItemGroup>
   <ItemGroup>
+    <Media Include="L-30e000a.wav" />
+    <Media Include="rir\1st_baptist_nashville_balcony.wav" />
+    <Media Include="rir\usina_main_s1_p5.wav" />
     <Media Include="Tvtokyo.wav" />
+    <Media Include="wav\L-30e000a.wav" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -35,22 +35,27 @@ void Spectrum::FFT(Signal signal) {
 		dataR.push_back(0.0);
 	}
 
+	
 	ip[0] = 0;
 	cdft(dataL.size(), -1, &dataL[0], ip, &w[0]);
 	ip[0] = 0;
 	cdft(dataR.size(), -1, &dataR[0], ip, &w[0]);
+
+
 	
 }
 
 
 
 void Spectrum::show() {
-	vector<double> plot_x(data_length / 2);
-	vector<double> plot_y(data_length / 2);
+	cout << "Fs" << Fs << endl;
+	vector<double> plot_x(dataL.size() / 4);
+	vector<double> plot_y(dataL.size() / 4);
 
 
-	for (long i = 0; i < data_length / 2; i++) {
-		plot_x[i] = Fs / data_length * i;
+	
+	for (long i = 0; i < dataL.size() / 4; i++) {
+		plot_x[i] = Fs / (dataL.size()/2.0) * i;
 		plot_y[i] = 20*log10(sqrt(dataL[2 * i] * dataL[2 * i] + dataL[2 * i + 1] * dataL[2 * i + 1]));
 	}
 

@@ -4,6 +4,7 @@
 #include "wave_defs.h"
 
 
+
 class Signal
 {
 public:
@@ -21,9 +22,20 @@ public:
 	//データから生成
 	Signal(vector<double>,double F);
 
+	//データの表示
 	void show();
-
 	void normalize();
+
+	//信号を二乗する
+	void squared();
+
+	double calc_power();
+
+	//MTFを表示
+	void show_MTF();
+
+	//ダウンサンプリング 引数分の１にダウンサンプリングする	
+	void down_sampling(unsigned int ratio);
 
 	//wavファイル読み込み関係---------------------------------------------------------
 	int readfmtChunk(FILE* fp, tWaveFormatPcm* waveFmtPcm);

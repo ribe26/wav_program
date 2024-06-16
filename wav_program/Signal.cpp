@@ -9,14 +9,14 @@
 
 
 
-
+//wavファイルから生成
 Signal::Signal(const char* filename) {
     read(filename);
     Fs = this->waveFormatpcm.samplesPerSec;
 }
 
-
-Signal::Signal(vector<double> data,double F) {
+//vectorから生成
+Signal::Signal(vector<double> data, double F) {
     Fs = F;
     for (int i = 0; i < data.size(); i++) {
         dataL.push_back(data[i]);
@@ -27,8 +27,8 @@ Signal::Signal(vector<double> data,double F) {
 }
 
 
-
-Signal::Signal(Spectrum spectrum){
+//IFFTで生成
+Signal::Signal(Spectrum spectrum) {
     Fs = spectrum.Fs;
     dataL = spectrum.dataL;
     dataR = spectrum.dataR;
@@ -51,7 +51,7 @@ Signal::Signal(Spectrum spectrum){
 
 
 
-void Signal::show(){
+void Signal::show() {
     unsigned long n = dataL.size();
 
     vector<double> plot_x(n / 2);
@@ -88,6 +88,61 @@ void Signal::normalize() {
     for (auto& e : this->dataR) {
         e /= normR;
     }
+}
+
+void Signal::squared() {
+    for (long i = 0; i < dataL.size() / 2; i++) {
+        dataL[i * 2] = dataL[i * 2] * dataL[i * 2];
+        dataR[i * 2] = dataR[i * 2] * dataR[i * 2];
+    }
+}
+
+void Signal::show_MTF() {
+    vector<double> squared_signal;
+    for (long i = 0; i < dataL.size() / 2; i++) {
+        squared_signal.push_back(dataL[i * 2] * dataL[i * 2]);
+    }
+    Signal sq_sig(squared_signal, Fs);
+    double power = this->calc_power();
+
+    Spectrum G(sq_sig);
+
+    vector<double> plot_x(G.dataL.size() / 4);
+    vector<double> plot_y(G.dataL.size() / 4);
+    for (long i = 0; i < G.dataL.size() / 4; i++) {
+        plot_x[i] = Fs / (G.dataL.size() / 2.0) * i;
+        plot_y[i] = sqrt(G.dataL[2 * i] * G.dataL[2 * i] + G.dataL[2 * i + 1] * G.dataL[2 * i + 1]) / power;
+    }
+
+    matplotlibcpp::plot(plot_x, plot_y);
+    matplotlibcpp::show();
+
+}
+
+
+double Signal::calc_power() {
+    double out = 0;
+    for (long i = 0; i < dataL.size()/2; i++) {
+        out += dataL[i * 2] *dataL[i * 2];
+    }
+    return out;
+}
+
+void Signal::down_sampling(unsigned int ratio) {
+    Fs = Fs / ratio;
+    vector<double> new_dataL;
+    vector<double> new_dataR;
+    for (long i = 0; i < dataL.size()/2;i++){
+        if (i % ratio == 0) {
+            new_dataL.push_back(dataL[i * 2]);
+            new_dataL.push_back(dataL[i * 2 + 1]);
+
+            new_dataR.push_back(dataR[i * 2]);
+            new_dataR.push_back(dataR[i * 2 + 1]);
+        }
+    }
+    dataL = new_dataL;
+    dataR = new_dataR;
 }
 
 
