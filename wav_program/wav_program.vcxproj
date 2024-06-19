@@ -75,8 +75,9 @@
     <LibraryPath>C:\Users\tonbe\AppData\Local\Programs\Python\Python36\libs;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>C:\Users\tonbe\AppData\Local\Programs\Python\Python36\Lib\site-packages\numpy\core\include;C:\Users\tonbe\AppData\Local\Programs\Python\Python36\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\tonbe\AppData\Local\Programs\Python\Python36\libs;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\fftw;C:\Users\tonbe\AppData\Local\Programs\Python\Python36\Lib\site-packages\numpy\core\include;C:\Users\tonbe\AppData\Local\Programs\Python\Python36\include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\fftw;C:\Users\tonbe\AppData\Local\Programs\Python\Python36\libs;$(LibraryPath)</LibraryPath>
+    <ExecutablePath>C:\fftw;$(ExecutablePath)</ExecutablePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -126,12 +127,15 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -142,10 +146,10 @@
     <ClCompile Include="wav_program.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="FFT.h" />
     <ClInclude Include="matplotlibcpp.h" />
     <ClInclude Include="Signal.h" />
     <ClInclude Include="Spectrum.h" />
+    <ClInclude Include="utility_funcitons.h" />
   </ItemGroup>
   <ItemGroup>
     <Media Include="L-30e000a.wav" />

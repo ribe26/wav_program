@@ -15,6 +15,7 @@ public:
 	std::vector<double> dataR;
 	void FFT(class Signal signal);
 
+	double calc_power(long freq);
 	void Conj();
 
 	void show();
@@ -22,4 +23,3 @@ public:
 	tWaveFormatPcm waveFormatpcm;
 	SWaveFileHeader waveFileheader;
 };
-

@@ -70,3 +70,15 @@ void Spectrum::Conj() {
 	}
 }
 
+double Spectrum::calc_power(long freq) {
+	double out = 0;
+	long count = 0;
+	for (long i = 0;i < dataL.size() / 2.0;i++) {
+		if (Fs / (dataL.size() / 2.0) * i >= freq) {
+			break;
+		}
+		count++;
+		out +=dataL[2 * i] * dataL[2 * i] + dataL[2 * i + 1] * dataL[2 * i + 1];
+	}
+	return out / (count * count);
+}

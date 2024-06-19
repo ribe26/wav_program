@@ -97,22 +97,32 @@ void Signal::squared() {
     }
 }
 
-void Signal::show_MTF() {
+void Signal::show_MTF(double freq) {
     vector<double> squared_signal;
     for (long i = 0; i < dataL.size() / 2; i++) {
         squared_signal.push_back(dataL[i * 2] * dataL[i * 2]);
     }
     Signal sq_sig(squared_signal, Fs);
+    //Spectrum SIG(*this);
+    //double power = SIG.calc_power(freq);
+    
+    Spectrum G(sq_sig);
+    //double power = G.calc_power(freq);
     double power = this->calc_power();
 
-    Spectrum G(sq_sig);
-
-    vector<double> plot_x(G.dataL.size() / 4);
-    vector<double> plot_y(G.dataL.size() / 4);
-    for (long i = 0; i < G.dataL.size() / 4; i++) {
-        plot_x[i] = Fs / (G.dataL.size() / 2.0) * i;
-        plot_y[i] = sqrt(G.dataL[2 * i] * G.dataL[2 * i] + G.dataL[2 * i + 1] * G.dataL[2 * i + 1]) / power;
+    vector<double> plot_x;
+    vector<double> plot_y;
+    double out = 0;
+    for (long i = 0;  i < dataL.size() / 2; i++) {
+        if (Fs / (G.dataL.size() / 2.0) * i >= freq) {
+            break;
+        }
+        plot_x.push_back( Fs / (G.dataL.size() / 2.0) * i);
+        plot_y.push_back(sqrt(G.dataL[2 * i] * G.dataL[2 * i] + G.dataL[2 * i + 1] * G.dataL[2 * i + 1]) / power);
+        out +=sqrt(G.dataL[2 * i] * G.dataL[2 * i] + G.dataL[2 * i + 1] * G.dataL[2 * i + 1]) / power;
     }
+    cout << out << endl;
+
 
     matplotlibcpp::plot(plot_x, plot_y);
     matplotlibcpp::show();
@@ -122,8 +132,8 @@ void Signal::show_MTF() {
 
 double Signal::calc_power() {
     double out = 0;
-    for (long i = 0; i < dataL.size()/2; i++) {
-        out += dataL[i * 2] *dataL[i * 2];
+    for (long i = 0; i < dataL.size() / 2; i++) {
+        out += dataL[i * 2] * dataL[i * 2];
     }
     return out;
 }
@@ -132,7 +142,7 @@ void Signal::down_sampling(unsigned int ratio) {
     Fs = Fs / ratio;
     vector<double> new_dataL;
     vector<double> new_dataR;
-    for (long i = 0; i < dataL.size()/2;i++){
+    for (long i = 0; i < dataL.size() / 2;i++) {
         if (i % ratio == 0) {
             new_dataL.push_back(dataL[i * 2]);
             new_dataL.push_back(dataL[i * 2 + 1]);
@@ -178,7 +188,7 @@ int Signal::wavHdrRead(const char* in_wavefile)
     long fPos, len;
     FILE* fp;
 
-    if (fopen_s(&fp,in_wavefile, "rb") != 0)
+    if (fopen_s(&fp, in_wavefile, "rb") != 0)
     {
         fprintf(stderr, " %sをオープンできません.\n", in_wavefile);
         return -1;                  // error
@@ -224,7 +234,7 @@ int Signal::wavHdrRead(const char* in_wavefile)
             this->waveFormatpcm.formatTag = waveFmtPcm.formatTag;
             this->waveFormatpcm.channels = waveFmtPcm.channels;
             this->waveFormatpcm.samplesPerSec = waveFmtPcm.samplesPerSec;
-            this->Fs= waveFmtPcm.samplesPerSec;
+            this->Fs = waveFmtPcm.samplesPerSec;
             this->waveFormatpcm.bytesPerSec = waveFmtPcm.bytesPerSec;
             this->waveFormatpcm.blockAlign = waveFmtPcm.blockAlign;
             this->waveFormatpcm.bitsPerSample = waveFmtPcm.bitsPerSample;
@@ -265,7 +275,7 @@ int Signal::read8BitWavMonaural(FILE* fpIn)
         if (fread(&In, sizeof In, 1, fpIn) != 1)
             return -1;
 
-        this->dataL.push_back((double)(In-128.0));
+        this->dataL.push_back((double)(In - 128.0));
         this->dataL.push_back(0);
         this->dataR.push_back((double)(In - 128.0));
         this->dataR.push_back(0);
@@ -345,7 +355,7 @@ int Signal::showWavdata() {
 /*--------------------------------------------------------------------------
 * wav データをダンプ
 */
-int Signal::readDataSub(FILE * fpIn)
+int Signal::readDataSub(FILE* fpIn)
 {
     fseek(fpIn, this->posOfData, SEEK_SET);    //元ファイルのデータ開始部分へ
 
@@ -381,7 +391,7 @@ int Signal::read(const char* in_wavefile)
 
     FILE* fpIn;
     this->bytesPerSingleCh = this->waveFormatpcm.bitsPerSample / 8;
-    if ((fopen_s(&fpIn,in_wavefile, "rb")) != 0)
+    if ((fopen_s(&fpIn, in_wavefile, "rb")) != 0)
     {
         printf("%s をオープンできません.\n", in_wavefile);
         return -1;
@@ -409,7 +419,7 @@ long Signal::wavHeaderWrite(FILE* fp)
     unsigned short bytes;
     WrSWaveFileHeader wrWavHdr;
     //strncpy_s(wrWavHdr.hdrRiff, STR_RIFF, sizeof wrWavHdr.hdrRiff); // RIFF ヘッダ
-    wrWavHdr.hdrRiff[0]='R';
+    wrWavHdr.hdrRiff[0] = 'R';
     wrWavHdr.hdrRiff[1] = 'I';
     wrWavHdr.hdrRiff[2] = 'F';
     wrWavHdr.hdrRiff[3] = 'F';
@@ -436,7 +446,7 @@ long Signal::wavHeaderWrite(FILE* fp)
 
     wrWavHdr.stWaveFormat.samplesPerSec = Fs;               // sampleng rate(Hz)
 
-    wrWavHdr.stWaveFormat.bytesPerSec = 4*Fs;
+    wrWavHdr.stWaveFormat.bytesPerSec = 4 * Fs;
 
     wrWavHdr.stWaveFormat.blockAlign = 4;                // byte/サンプル*チャンネル
 
@@ -448,7 +458,7 @@ long Signal::wavHeaderWrite(FILE* fp)
     wrWavHdr.hdrData[2] = 't';
     wrWavHdr.hdrData[3] = 'a';
 
-    wrWavHdr.sizeOfData = this->dataL.size()*2;              // データ長 (byte)
+    wrWavHdr.sizeOfData = this->dataL.size() * 2;              // データ長 (byte)
 
     fwrite(&wrWavHdr, sizeof wrWavHdr, 1, fp);                  // write header
 
@@ -465,10 +475,10 @@ int Signal::write16BitWav(FILE* fpOut)
     unsigned long  i;
     short In[2];
 
-    for (i = 0; i < this->dataL.size()/2; i++)
+    for (i = 0; i < this->dataL.size() / 2; i++)
     {
-        In[0] = (short)this->dataL[i*2];    //Left
-        In[1] = (short)this->dataR[i*2];    //Right
+        In[0] = (short)this->dataL[i * 2];    //Left
+        In[1] = (short)this->dataR[i * 2];    //Right
         //cout << In[0] << endl;
         if (fwrite(In, sizeof In, 1, fpOut) != 1)
             return -1;
@@ -490,7 +500,7 @@ int Signal::write(const char* outFile)
 {
     FILE* fpOut;
 
-    if ((fopen_s(&fpOut,outFile, "wb")) != 0)
+    if ((fopen_s(&fpOut, outFile, "wb")) != 0)
     {
         fprintf(stderr, "%s をオープンできません.¥n", outFile);
         return -1;
