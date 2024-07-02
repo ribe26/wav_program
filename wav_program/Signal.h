@@ -22,11 +22,13 @@ public:
 
 	//データの表示
 	void show();
+	//正規化
 	void normalize();
 
 	//信号を二乗する
 	void squared();
 
+	//信号のパワーの計算
 	double calc_power();
 
 	//MTFを表示

@@ -44,17 +44,17 @@
     <ClInclude Include="Spectrum.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="FFT.h">
+    <ClInclude Include="matplotlibcpp.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="matplotlibcpp.h">
+    <ClInclude Include="utility_funcitons.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="FFT.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Media Include="Tvtokyo.wav">
-      <Filter>ソース ファイル</Filter>
-    </Media>
     <Media Include="L-30e000a.wav">
       <Filter>リソース ファイル</Filter>
     </Media>
