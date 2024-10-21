@@ -10,8 +10,12 @@
 #include "Spectrum.h"
 int main()
 {  
-	const char* filename = "rir/usina_main_s1_p5.wav";
-	Signal c_signal(filename);
+	vector<double> sig(512,0);
+	sig[0] = 1.0;
+
+	//const char* filename = "rir/usina_main_s1_p5.wav";
+	//Signal c_signal(filename);
+	Signal c_signal(sig, 48000);
 	c_signal.show();
 	Spectrum spec(c_signal);
 	spec.show();
