@@ -3,36 +3,36 @@
 #include <string>
 #include "wave_defs.h"
 
-
-
 class Signal
 {
 public:
 	unsigned int Fs;
 	std::vector<double> dataL;
 	std::vector<double> dataR;
-	
+
 
 	//wavファイルから生成
 	Signal(const char* filename);
 
 	//スペクトルからIFFTによって生成
 	Signal(class Spectrum);
-	
+
 	//データから生成
-	Signal(vector<double>,double F);
+	Signal(vector<double>, double F);
 
 	//データの表示
 	void show();
+	//正規化
 	void normalize();
 
 	//信号を二乗する
 	void squared();
 
+	//信号のパワーの計算
 	double calc_power();
 
 	//MTFを表示
-	void show_MTF();
+	void show_MTF(double freq);
 
 	//ダウンサンプリング 引数分の１にダウンサンプリングする	
 	void down_sampling(unsigned int ratio);
@@ -41,7 +41,7 @@ public:
 	int readfmtChunk(FILE* fp, tWaveFormatPcm* waveFmtPcm);
 	int wavHdrRead(const char* in_wavefile);
 
-	int read8BitWavMonaural(FILE *fpIn);
+	int read8BitWavMonaural(FILE* fpIn);
 	int read8BitWavStereo(FILE* fpIn);
 	int read16BitWavMonaural(FILE* fpIn);
 	int read16BitWavStereo(FILE* fpIn);
@@ -53,7 +53,7 @@ public:
 	int showWavdata();
 
 	//waveファイル書き込み--------------------------------------------------------------
-	long wavHeaderWrite(FILE *fpIn);
+	long wavHeaderWrite(FILE* fpIn);
 	int write16BitWav(FILE* fpOut);
 	int write(const char* outFile);
 
@@ -70,6 +70,5 @@ public:
 
 
 
-	
-};
 
+};
