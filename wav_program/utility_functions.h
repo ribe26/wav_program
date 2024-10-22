@@ -1,8 +1,8 @@
 #pragma once
-
-
 #include <cmath>
 #include <cstdlib>  // rand(), RAND_MAX
+#include <iostream>
+#include <vector>
 
 const double PI = 3.14159265358979323846;
 std::vector<double> generateSineWave(int length, double amplitude, double frequency, double samplingRate) {

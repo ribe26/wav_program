@@ -8,30 +8,67 @@
 #include "matplotlibcpp.h"
 #include <vector>
 #include "Spectrum.h"
+#include "MatrixCalculation.h"
+#include "utility_functions.h"
+
 int main()
 {  
-	vector<double> sig(512,0);
-	sig[0] = 1.0;
+    // Parameters for the sine wave
+    int length = 128;         // Length of the sine wave
+    double amplitude = 1.0;   // Amplitude of the sine wave
+    double frequency = 5.0;   // Frequency of the sine wave in Hz
+    double samplingRate = 100.0; // Sampling rate in Hz
 
-	//const char* filename = "rir/usina_main_s1_p5.wav";
-	//Signal c_signal(filename);
-	Signal c_signal(sig, 48000);
-	c_signal.show();
-	Spectrum spec(c_signal);
-	spec.show();
-	c_signal.show_MTF();
-	/*
-	vector<double> imp_vec((c_signal.dataL.size()+1)/2.0, 0.0);
-	Signal impulse(imp_vec, c_signal.Fs);
 
-	Spectrum C(c_signal);
-	Spectrum C_conj(c_signal);
-	C_conj.Conj();
+    // Generate the sine wave
+    std::vector<double> sineWave = generateSineWave(length, amplitude, frequency, samplingRate);
+    std::vector<double> sineWave2(sineWave.size(), 0.0);
+    for (int i = 0; i < sineWave.size(); i++) {
+        sineWave2[i] = sineWave[i] * sineWave[i];
+    }
 
-	C.show();
-	C_conj.show();
-	Spectrum H(impulse);
-	*/
+    Signal c(sineWave,samplingRate);
+    Signal c2(sineWave2,samplingRate);
+    Spectrum C(c);
+    Spectrum CT(c);
+    CT.Conj();
+    Spectrum C2(c2);
 
-	//git _test
+    vector<complex<double>>G2;
+
+    for (int i = 0; i < C.dataL.size(); i++) {
+        std::vector<std::vector<std::complex<double>>> Dk = createD(C.dataL.size(), i);
+        //printMatrix2(Dk);
+        std::vector<std::complex<double>> calc = multiply1D2D(CT.dataL, Dk);
+        std::complex<double> calc2 = multiply1D1D(calc, C.dataL);
+        G2.push_back(calc2);
+    }
+
+    double abs_max_G2 = 0;
+    double abs_max_C2 = 0;
+    for (int i = 0; i < G2.size(); i++) {
+        if (abs(G2[i]) > abs_max_G2) {
+            abs_max_G2 = abs(G2[i]);
+        }
+        if (abs(C2.dataL[i]) > abs_max_C2) {
+            abs_max_C2 = abs(C2.dataL[i]);
+        }
+    }
+
+    std::vector <double> G2_abs;
+    std::vector <double> C2_abs;
+    for (int i = 0; i < G2.size(); i++) {
+        G2_abs.push_back(abs(G2[i]));
+        C2_abs.push_back(abs(C2.dataL[i]));
+
+    }
+
+    std::cout << G2.size() << std::endl;
+    std::cout << C2.dataL.size() << std::endl;
+
+    for (int i = 0; i < G2.size(); i++) {
+        G2_abs[i] /= abs_max_G2;
+        C2_abs[i] /= abs_max_C2;
+        std::cout << G2_abs[i] << "," << C2_abs[i] << std::endl;
+    }
 }
