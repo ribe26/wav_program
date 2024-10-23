@@ -6,7 +6,7 @@
 class Signal
 {
 public:
-	unsigned int Fs;
+	double Fs;
 	std::vector<double> dataL;
 	std::vector<double> dataR;
 

@@ -53,7 +53,6 @@ Signal::Signal(Spectrum spectrum) {
         dataL[i] = tempLsig[i*2]/spectrum.original_length;
         dataR[i] = tempRsig[i * 2]/spectrum.original_length;
     }
-    
     delete[] ip;
    }
 
@@ -101,7 +100,6 @@ void Signal::squared() {
 
 // MTFを表示する
 void Signal::show_MTF(double freq) {
-    /*
     std::vector<double> squared_signal;
     for (size_t i = 0; i < dataL.size() / 2; i++) {
         squared_signal.push_back(dataL[i * 2] * dataL[i * 2]);
@@ -120,14 +118,13 @@ void Signal::show_MTF(double freq) {
             break;
         }
         plot_x.push_back(Fs / (G.dataL.size() / 2.0) * i);
-        plot_y.push_back(std::sqrt(G.dataL[2 * i] * G.dataL[2 * i] + G.dataL[2 * i + 1] * G.dataL[2 * i + 1]) / power);
-        out += std::sqrt(G.dataL[2 * i] * G.dataL[2 * i] + G.dataL[2 * i + 1] * G.dataL[2 * i + 1]) / power;
+        plot_y.push_back(abs(G.dataL[i]) / power);
+        out += std::sqrt(abs(G.dataL[i])) / power;
     }
 
     std::cout << out << std::endl;
     matplotlibcpp::plot(plot_x, plot_y);
     matplotlibcpp::show();
-    */
     }
 
 // パワーを計算する

@@ -7,12 +7,12 @@ class Spectrum
 {
 public:
 	Spectrum(class Signal signal);
+	Spectrum(vector<complex<double>>,double Fs,long original_len);
 
 	unsigned long original_length;//Signalから変換した場合，元のSignalの長さを記録しておく
 	unsigned long data_length;//何点のFFTか
 	unsigned long Fs;//サンプリング周波数
 	
-	//2n要素目：実部 2n+1要素目:虚部
 	std::vector<complex<double>> dataL;
 	std::vector<complex<double>> dataR;
 	

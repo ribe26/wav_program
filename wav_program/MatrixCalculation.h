@@ -117,6 +117,34 @@ namespace {
         return output;
     }
 
+    template<typename T>
+    std::vector<std::vector<T>> multiply2D2D(const std::vector<std::vector<T>>& mat1, const std::vector<std::vector<T>>& mat2) {
+        int rows1 = mat1.size();              // Number of rows in mat1
+        int cols1 = mat1[0].size();           // Number of columns in mat1
+        int rows2 = mat2.size();              // Number of rows in mat2
+        int cols2 = mat2[0].size();           // Number of columns in mat2
+
+        // Check if matrix multiplication is possible
+        if (cols1 != rows2) {
+            std::cerr << "Error: Incompatible matrix dimensions for multiplication." << std::endl;
+            exit(1);
+        }
+
+        // Initialize the result matrix with zeros
+        std::vector<std::vector<T>> result(rows1, std::vector<T>(cols2, T(0)));
+
+        // Matrix multiplication
+        for (int i = 0; i < rows1; ++i) {
+            for (int j = 0; j < cols2; ++j) {
+                for (int k = 0; k < cols1; ++k) {
+                    result[i][j] += mat1[i][k] * mat2[k][j];
+                }
+            }
+        }
+
+        return result;
+    }
+
     // Function to print the matrix
     void printMatrix2(const std::vector<std::vector<std::complex<double>>>& matrix) {
         for (const auto& row : matrix) {

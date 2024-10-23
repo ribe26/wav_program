@@ -40,3 +40,11 @@ double generateGaussianNoise(double mean, double stddev) {
     spare = v * s;
     return mean + stddev * u * s;
 }
+
+std::vector<double> generateReverbImpulsuse(int length, double Tr, double amplitude, double samplingRate) {
+    vector<double> output(length);
+    for (int i = 0;i < length;i++) {
+        output[i] = amplitude * exp(-6.9 * i / samplingRate / Tr) * generateGaussianNoise(0, 0.1);
+    }
+    return output;
+}

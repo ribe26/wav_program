@@ -10,7 +10,15 @@ Spectrum::Spectrum(Signal signal) {
     FFT(signal);
 }
 
-
+Spectrum::Spectrum(vector<complex<double>> data, double samplingRate, long original_len) {
+    original_length = original_len;
+    Fs = samplingRate;
+    for (int i = 0;i < data.size();i++) {
+        dataL.push_back(data[i]);
+        dataR.push_back(data[i]);
+        if (i < 10) { cout << "data:" << data[i]; }
+    }
+}
 // FFT•ÏŠ·‚ðs‚¤ŠÖ”
 void Spectrum::FFT(Signal signal) {
     waveFormatpcm = signal.waveFormatpcm;
@@ -67,9 +75,10 @@ void Spectrum::show() {
     std::vector<double> plot_x(dataL.size()/2);
     std::vector<double> plot_y(dataL.size()/2);
 
-    for (long i = 0; i < dataL.size() / 2; i++) {
-        plot_x[i] = Fs / (dataL.size() / 2.0) * i;
+    for (int i = 0; i < dataL.size() / 2; i++) {
+        plot_x[i] = Fs / (double)dataL.size() *i;
         plot_y[i] = 20 * log10(abs(dataL[i]));
+        //cout << "x:" << plot_x[i] <<"y:" << plot_y[i]<<endl;
     }
 
     matplotlibcpp::plot(plot_x, plot_y);
