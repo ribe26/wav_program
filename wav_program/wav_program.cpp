@@ -35,7 +35,7 @@ int main()
     C.show();
     //Signal c2 = c;
     */    
-    std::vector<double> rir = generateReverbImpulsuse(length, 0.01, amplitude, samplingRate);
+    std::vector<double> rir = generateReverbImpulsuse(length, 0.5, amplitude, samplingRate);
     Signal c(rir, samplingRate);
     Signal c2 = c;
     //Signal c("rir/usina_main_s1_p5.wav");
@@ -46,6 +46,8 @@ int main()
     c2.squared();
     Spectrum C(c);
     Spectrum CT(c);
+    c.show();
+    c.show_MTF(20);
     CT.Conj();
     Spectrum C2(c2);
     //std::vector<std::vector<std::complex<double>>> diagCT = toDiagonalMatrix(CT.dataL);
@@ -128,8 +130,10 @@ int main()
 
     std::vector<double> plot_x;
     std::vector<double> plot_y;
+    int count = 0;
     for (int i = startIndexes.front(); i <= endIndexes.back(); i++) {
         plot_x.push_back(i * unitFs);
+        C.dataL[i] *= Filters[count++];
     }
 
     for (int i = 0; i < plot_x.size(); i++) {
@@ -141,6 +145,11 @@ int main()
     cout << "plot_y" << plot_y.size();
     matplotlibcpp::plot(plot_x, plot_y);
     matplotlibcpp::show();
+
+
+    Signal out(C);
+    out.show();
+    out.show_MTF(maxFm);
 
     //Spectrum H_spec2(Filters, c.Fs, Filters.size());
     //H_spec2.show();
