@@ -5,8 +5,15 @@
 #include <cmath>
 
 namespace {
-    //D(k)のを作成する
-    std::vector<std::vector<std::complex<double>>> createD(int N, int k) {
+
+    //複素数ベクトルの特定区間を抜く
+    std::vector<std::complex<double>>limitVector(std::vector<std::complex<double>> vec, int startIdx, int endIdx) {
+
+    }
+
+
+    //D(k)を作成する
+    std::vector<std::vector<std::complex<double>>> createD(int N, int k, int startIdx, int endIdx) {
         // Initialize N x N matrix with complex zeros
         std::vector<std::vector<std::complex<double>>> D(N, std::vector<std::complex<double>>(N, std::complex<double>(0.0, 0.0)));
 
@@ -16,25 +23,74 @@ namespace {
         }
 
         // Fill the top-right (N-k) x (N-k) submatrix with diagonal 1s (from top-left to bottom-right)
-        for (int i = 0; i < (N - k); ++i) {
+        for (int i = 0; i < N-k; ++i) {
             D[i][k + i] = std::complex<double>(1.0, 0.0); // Set diagonal elements to 1
         }
 
         return D;
     }
 
+    // 特定要素を切り抜いたDを作成する関数
+    std::vector<std::vector<std::complex<double>>> createSlicedD(int N, int k, int startIdx, int endIdx) {
+        // 行列の初期化：全要素が 0+0i の N×N 行列
+        std::vector<std::vector<std::complex<double>>> matrix(N, std::vector<std::complex<double>>(N, std::complex<double>(0, 0)));
+
+        // 左下に k×k の単位行列を配置
+        for (int i = 0; i < k; ++i) {
+            matrix[N - k + i][i] =std::complex<double>(1, 0); // 1+0i
+        }
+
+        // 右上に (N-k)×(N-k) の単位行列を配置
+        for (int i = 0; i < N - k; ++i) {
+            matrix[i][k + i] = std::complex<double>(1, 0); // 1+0i
+        }
+
+        // くり抜き処理
+        int size = endIdx - startIdx + 1;
+        std::vector<std::vector<std::complex<double>>> sliced(size, std::vector<std::complex<double>>(size));
+
+        for (int i = 0; i < size; ++i) {
+            for (int j = 0; j < size; ++j) {
+                sliced[i][j] = matrix[startIdx + i][startIdx + j];
+            }
+        }
+
+        return sliced;
+    }
+
     //スペクトルを対角行列に変換
     std::vector<std::vector<std::complex<double>>> toDiagonalMatrix(const std::vector<std::complex<double>>& vec) {
         int N = vec.size(); // Size of the input vector
         // Initialize N*N matrix with 0
-        std::vector<std::vector<std::complex<double>>> diagMatrix(N, std::vector<std::complex<double>>(N, std::complex<double>(0.0, 0.0)));
+        std::vector<std::vector<std::complex<double>>> diagMatrix(vec.size(), std::vector<std::complex<double>>(vec.size(), std::complex<double>(0.0, 0.0)));
 
         // Set the diagonal elements
-        for (int i = 0; i < N; ++i) {
+        for (int i = vec.size(); i < vec.size(); ++i) {
             diagMatrix[i][i] = vec[i];
         }
 
         return diagMatrix;
+    }
+
+    //スペクトルを対角行列に変換(複素共役転置版)
+    std::vector<std::vector<std::complex<double>>> toDiagonalConjMatrix(const std::vector<std::complex<double>>& vec) {
+        int N = vec.size(); // Size of the input vector
+        // Initialize N*N matrix with 0
+        std::vector<std::vector<std::complex<double>>> diagMatrix(vec.size(), std::vector<std::complex<double>>(vec.size(), std::complex<double>(0.0, 0.0)));
+
+        // Set the diagonal elements
+        for (int i = vec.size(); i < vec.size(); ++i) {
+            diagMatrix[i][i] = std::conj(vec[i]);
+        }
+        return diagMatrix;
+    }
+
+    std::vector<std::complex<double>> vectorConj(std::vector<std::complex<double>> &vec) {
+        std::vector<std::complex<double>> output;
+        for (int i = 0;vec.size();i++) {
+            output.push_back(std::conj(vec[i]));
+        }
+        return output;
     }
 
     // 行列を転置する

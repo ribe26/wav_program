@@ -16,7 +16,7 @@ int main()
 {  
     
     // Parameters for the sine wave
-    int length = 1024;         // Length of the sine wave
+    int length = 48000;         // Length of the sine wave
     double amplitude = 1.0;   // Amplitude of the sine wave
     double frequency = 5.0;   // Frequency of the sine wave in Hz
     double samplingRate = 48000.0; // Sampling rate in Hz
@@ -48,26 +48,63 @@ int main()
     Spectrum CT(c);
     CT.Conj();
     Spectrum C2(c2);
-
-
-    double mu = 0.0001;
-    int l = 20;
-    int maxF=20;
     //std::vector<std::vector<std::complex<double>>> diagCT = toDiagonalMatrix(CT.dataL);
     //std::vector<std::vector<std::complex<double>>> diagC = toDiagonalMatrix(C.dataL);
 
-    std::vector<std::complex<double>> Ddash;
-    for (int i = 0; i < C.dataL.size(); i++) {
-        std::complex<double> calc1 = calcDdashk(C.dataL,i);
+    double unitFs = samplingRate / C.dataL.size();
+
+  
+    //どの帯域を切り抜くか
+    double startFs =2000;
+    double endFs  = 3000;
+
+    int startIdx = 0;
+    int endIdx = 0;
+
+    while (startIdx * unitFs < startFs) {
+        startIdx++;
+    }
+
+    while (endIdx * unitFs < endFs) {
+        endIdx++;
+    }
+    std::cout <<unitFs << "," << startIdx << "," << endIdx;
+
+    int FilterLength = 100;
+    endIdx = startIdx + FilterLength-1;
+
+
+    
+    double mu = 0.0001;
+    int l = 20;
+    int maxFm = 20;
+
+    int maxMTFidx = 0;
+    while (maxMTFidx * unitFs < maxFm) {
+        maxMTFidx++;
+    }
+
+    cout << maxMTFidx;
+   
+
+    std::limitedC = limitVector(startIdx,endIdx);
+
+
+    
+    std::vector < std::vector < ::vector<std::complex<double>>>> Ddash;
+    for (int i = 0; i < maxMTFidx; i++) {
+        cout << i << endl;
+        vector<vector<std::complex<double>>> Dk = createD(C.dataL.size(),i,startIdx,endIdx);
+        vector<vector<std::complex<double>>> calc1 = calcDdashk(C.dataL,Dk);
         Ddash.push_back(calc1);
-        //cout << "Dk:" << calc1 << endl;
     }
     cout << "done calc Ddash";
+    
+
+
     std::vector<std::complex<double>> H(C.dataL.size(), { 1.0,0.0 });
-    Spectrum H_spec(Ddash, c.Fs, Ddash.size());
-    H_spec.show();
     
-    
+    /*
     for (int k = 0;k < l;k++) {
         for (int i = 0; i < maxF; i++) {
             std::vector<std::complex<double>> lamda = calclamda(H, Ddash);
@@ -93,7 +130,7 @@ int main()
     Spectrum H_spec2(H, c.Fs, H.size());
     H_spec2.show();
     
-    
+    */
 
     /*
     double abs_max_G2 = 0;
