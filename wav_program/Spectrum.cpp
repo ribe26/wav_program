@@ -16,7 +16,7 @@ Spectrum::Spectrum(vector<complex<double>> data, double samplingRate, long origi
     for (int i = 0;i < data.size();i++) {
         dataL.push_back(data[i]);
         dataR.push_back(data[i]);
-        if (i < 10) { cout << "data:" << data[i]; }
+        //if (i < 10) { cout << "data:" << data[i]; }
     }
 }
 // FFT変換を行う関数
@@ -71,7 +71,7 @@ void Spectrum::FFT(Signal signal) {
 
 // スペクトラムを表示する関数
 void Spectrum::show() {
-    std::cout << "Fs: " << Fs << std::endl;
+    //std::cout << "Fs: " << Fs << std::endl;
     std::vector<double> plot_x(dataL.size()/2);
     std::vector<double> plot_y(dataL.size()/2);
 

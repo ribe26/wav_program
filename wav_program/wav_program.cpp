@@ -55,11 +55,13 @@ int main()
 
   
     //どの帯域を切り抜くか
-    double startFs =2000;
-    double endFs  = 3000;
+    double startFs =1000;
+    double endFs  = 8000;
 
     int startIdx = 0;
     int endIdx = 0;
+
+    int FilterLength = 128;
 
     while (startIdx * unitFs < startFs) {
         startIdx++;
@@ -68,15 +70,22 @@ int main()
     while (endIdx * unitFs < endFs) {
         endIdx++;
     }
-    std::cout <<unitFs << "," << startIdx << "," << endIdx;
-
-    int FilterLength = 100;
-    endIdx = startIdx + FilterLength-1;
 
 
+
+    vector<int> startIndexes;
+    vector<int> endIndexes;
+
+    while (startIdx < endIdx) {
+        startIndexes.push_back(startIdx);
+        startIdx += FilterLength;
+        endIndexes.push_back(startIdx-1);
+    }
+
+    cout <<"reshaping Fs area" << (endIndexes.back() - startIndexes.front()) * unitFs << endl;
     
     double mu = 0.0001;
-    int l = 20;
+    int l = 1000;
     int maxFm = 20;
 
     int maxMTFidx = 0;
@@ -84,46 +93,75 @@ int main()
         maxMTFidx++;
     }
 
-    cout << maxMTFidx;
+    cout << maxMTFidx << endl;
+    cout << "done" << endl;
    
+    cout << "num of bands" << startIndexes.size()<<endl;
+    std::vector<std::complex<double>>Filters;
 
-    std::limitedC = limitVector(startIdx,endIdx);
+    for (int bandIdx = 0; bandIdx < startIndexes.size(); bandIdx++) {
+        cout << "band" << bandIdx << endl;
+        std::vector<std::complex<double>>limitedC = limitVector(C.dataL, startIndexes[bandIdx], endIndexes[bandIdx]);
 
+        std::vector<std::vector<std::vector<std::complex<double>>>> Ddash;
+        for (int i = 0; i < maxMTFidx; i++) {
+            vector<vector<std::complex<double>>> Dk = createLimitedD(C.dataL.size(), i, startIndexes[bandIdx], endIndexes[bandIdx]);
+            vector<vector<std::complex<double>>> calc1 = calcDdashk(limitedC, Dk);
+            Ddash.push_back(calc1);
+        }
+        cout << "done calc Ddash" << endl;
 
-    
-    std::vector < std::vector < ::vector<std::complex<double>>>> Ddash;
+        std::vector<std::complex<double>> H(FilterLength, { 1.0,0.0 });
+        for (int k = 0; k < 1; k++) {
+            for (int i = 0; i < 1; i++) {
+                std::complex<double> lamda = calcLamda(H, Ddash[i]);
+                renewFilter(mu, lamda, Ddash[i], &H);
+            }
+        }
+        if (bandIdx == 0) {
+            Filters = H;
+        }
+        else {
+            std::copy(H.begin(), H.end(), std::back_inserter(Filters));
+        }
+    }
+
+    std::vector<double> plot_x;
+    std::vector<double> plot_y;
+    for (int i = startIndexes.front(); i <= endIndexes.back(); i++) {
+        plot_x.push_back(i * unitFs);
+    }
+
+    for (int i = 0; i < plot_x.size(); i++) {
+        plot_y.push_back( 20 * log10(abs(Filters[i])));
+        //cout << "x:" << plot_x[i] <<"y:" << plot_y[i]<<endl;
+    }
+
+    cout << "plot_x" << plot_x.size();
+    cout << "plot_y" << plot_y.size();
+    matplotlibcpp::plot(plot_x, plot_y);
+    matplotlibcpp::show();
+
+    //Spectrum H_spec2(Filters, c.Fs, Filters.size());
+    //H_spec2.show();
+
+    /*
+    std::vector<std::complex<double>>limitedC = limitVector(C.dataL, startIdx, endIdx);
+    std::vector<std::vector<std::vector<std::complex<double>>>> Ddash;
     for (int i = 0; i < maxMTFidx; i++) {
-        cout << i << endl;
-        vector<vector<std::complex<double>>> Dk = createD(C.dataL.size(),i,startIdx,endIdx);
-        vector<vector<std::complex<double>>> calc1 = calcDdashk(C.dataL,Dk);
+        vector<vector<std::complex<double>>> Dk = createLimitedD(C.dataL.size(),i,startIdx,endIdx);
+        vector<vector<std::complex<double>>> calc1 = calcDdashk(limitedC,Dk);
         Ddash.push_back(calc1);
     }
-    cout << "done calc Ddash";
+    cout << "done calc Ddash"<<endl;
+
+    std::vector<std::complex<double>> H(FilterLength, { 1.0,0.0 });
     
-
-
-    std::vector<std::complex<double>> H(C.dataL.size(), { 1.0,0.0 });
     
-    /*
-    for (int k = 0;k < l;k++) {
-        for (int i = 0; i < maxF; i++) {
-            std::vector<std::complex<double>> lamda = calclamda(H, Ddash);
-            //if (k < 10) { cout << lamda << endl; }
-            double power = 0;
-            if (k == 0 && i==0) {
-                for (int h = 0;h < 10;h++) {
-                    cout <<lamda[h] << endl;
-                }
-            }
-            
-            for (int j = 0;j < H.size();j++) {
-                H[j] += mu * lamda[j] * Ddash[j]* H[j];
-                power += abs(H[j]);
-            }
-            for (int j = 0;j < H.size();j++) {
-                H[j] /=power;
-            }
-
+    for (int k = 0;k < 1;k++) {
+        for (int i = 0; i < 1; i++) {
+            std::complex<double> lamda = calcLamda(H, Ddash[i]);
+            renewFilter(mu,lamda, Ddash[i], &H);
         }
     }
     //H[0] = { 1.0,0 };

@@ -8,7 +8,13 @@ namespace {
 
     //複素数ベクトルの特定区間を抜く
     std::vector<std::complex<double>>limitVector(std::vector<std::complex<double>> vec, int startIdx, int endIdx) {
-
+        std::vector<std::complex<double>> output;
+        for (int i = 0; i < vec.size(); i++) {
+            if (i >= startIdx && i <= endIdx) {
+                output.push_back(vec[i]);
+            }
+        }
+        return output;
     }
 
 
@@ -31,31 +37,26 @@ namespace {
     }
 
     // 特定要素を切り抜いたDを作成する関数
-    std::vector<std::vector<std::complex<double>>> createSlicedD(int N, int k, int startIdx, int endIdx) {
-        // 行列の初期化：全要素が 0+0i の N×N 行列
-        std::vector<std::vector<std::complex<double>>> matrix(N, std::vector<std::complex<double>>(N, std::complex<double>(0, 0)));
-
-        // 左下に k×k の単位行列を配置
-        for (int i = 0; i < k; ++i) {
-            matrix[N - k + i][i] =std::complex<double>(1, 0); // 1+0i
-        }
-
-        // 右上に (N-k)×(N-k) の単位行列を配置
-        for (int i = 0; i < N - k; ++i) {
-            matrix[i][k + i] = std::complex<double>(1, 0); // 1+0i
-        }
-
-        // くり抜き処理
+    std::vector<std::vector<std::complex<double>>> createLimitedD(int N, int k, int startIdx, int endIdx) {
         int size = endIdx - startIdx + 1;
-        std::vector<std::vector<std::complex<double>>> sliced(size, std::vector<std::complex<double>>(size));
+        std::vector<std::vector<std::complex<double>>> partialMatrix(size, std::vector<std::complex<double>>(size, std::complex<double>(0, 0)));
 
         for (int i = 0; i < size; ++i) {
             for (int j = 0; j < size; ++j) {
-                sliced[i][j] = matrix[startIdx + i][startIdx + j];
+                int globalRow = startIdx + i;
+                int globalCol = startIdx + j;
+
+                // 左下の k×k 単位行列の範囲
+                if (globalRow >= N - k && globalCol < k && globalRow - (N - k) == globalCol) {
+                    partialMatrix[i][j] ={ 1, 0 }; // 1+0i
+                }
+                // 右上の (N-k)×(N-k) 単位行列の範囲
+                else if (globalRow < N - k && globalCol >= k && globalRow == globalCol - k) {
+                    partialMatrix[i][j] = {1, 0}; // 1+0i
+                }
             }
         }
-
-        return sliced;
+            return partialMatrix;
     }
 
     //スペクトルを対角行列に変換
@@ -65,7 +66,7 @@ namespace {
         std::vector<std::vector<std::complex<double>>> diagMatrix(vec.size(), std::vector<std::complex<double>>(vec.size(), std::complex<double>(0.0, 0.0)));
 
         // Set the diagonal elements
-        for (int i = vec.size(); i < vec.size(); ++i) {
+        for (int i = 0; i < vec.size();i++) {
             diagMatrix[i][i] = vec[i];
         }
 
@@ -79,16 +80,16 @@ namespace {
         std::vector<std::vector<std::complex<double>>> diagMatrix(vec.size(), std::vector<std::complex<double>>(vec.size(), std::complex<double>(0.0, 0.0)));
 
         // Set the diagonal elements
-        for (int i = vec.size(); i < vec.size(); ++i) {
+        for (int i = 0; i < vec.size(); i++) {
             diagMatrix[i][i] = std::conj(vec[i]);
         }
         return diagMatrix;
     }
 
-    std::vector<std::complex<double>> vectorConj(std::vector<std::complex<double>> &vec) {
-        std::vector<std::complex<double>> output;
-        for (int i = 0;vec.size();i++) {
-            output.push_back(std::conj(vec[i]));
+    std::vector<std::complex<double>> vectorConj(std::vector<std::complex<double>>& vec) {
+        std::vector<std::complex<double>> output(vec.size());
+        for (int i = 0;i<vec.size();i++) {
+            output[i]=std::conj(vec[i]);
         }
         return output;
     }
