@@ -1,50 +1,250 @@
-#pragma once
+﻿#pragma once
 #include <cmath>
 #include <cstdlib>  // rand(), RAND_MAX
 #include <iostream>
 #include <vector>
+#include <fstream>
+#include <numeric>
+#include <algorithm>
 
-const double PI = 3.14159265358979323846;
-std::vector<double> generateSineWave(int length, double amplitude, double frequency, double samplingRate) {
-    std::vector<double> sineWave(length);
+namespace {
+    const double PI = 3.14159265358979323846;
+    std::vector<double> generateSineWave(int length, double amplitude, double frequency, double samplingRate) {
+        std::vector<double> sineWave(length);
 
-    // Generate sine wave
-    for (int n = 0; n < length; ++n) {
-        double t = n / samplingRate; // Time index
-        sineWave[n] = amplitude * std::sin(2.0 * PI * frequency * t);
+        // Generate sine wave
+        for (int n = 0; n < length; ++n) {
+            double t = n / samplingRate; // Time index
+            sineWave[n] = amplitude * std::sin(2.0 * PI * frequency * t);
+        }
+
+        return sineWave;
     }
 
-    return sineWave;
-}
+    // ボックスミュラー法を使用して正規分布に従う乱数を生成する関数
+    double generateGaussianNoise(double mean, double stddev) {
+        static bool hasSpare = false;
+        static double spare;
 
-// �{�b�N�X�~�����[�@���g�p���Đ��K���z�ɏ]�������𐶐�����֐�
-double generateGaussianNoise(double mean, double stddev) {
-    static bool hasSpare = false;
-    static double spare;
+        if (hasSpare) {
+            hasSpare = false;
+            return mean + stddev * spare;
+        }
 
-    if (hasSpare) {
-        hasSpare = false;
-        return mean + stddev * spare;
+        hasSpare = true;
+
+        double u, v, s;
+        do {
+            u = 2.0 * rand() / RAND_MAX - 1.0;
+            v = 2.0 * rand() / RAND_MAX - 1.0;
+            s = u * u + v * v;
+        } while (s >= 1.0 || s == 0.0);
+
+        s = sqrt(-2.0 * log(s) / s);
+        spare = v * s;
+        return mean + stddev * u * s;
     }
 
-    hasSpare = true;
-
-    double u, v, s;
-    do {
-        u = 2.0 * rand() / RAND_MAX - 1.0;
-        v = 2.0 * rand() / RAND_MAX - 1.0;
-        s = u * u + v * v;
-    } while (s >= 1.0 || s == 0.0);
-
-    s = sqrt(-2.0 * log(s) / s);
-    spare = v * s;
-    return mean + stddev * u * s;
-}
-
-std::vector<double> generateReverbImpulsuse(int length, double Tr, double amplitude, double samplingRate) {
-    vector<double> output(length);
-    for (int i = 0;i < length;i++) {
-        output[i] = amplitude * exp(-6.9 * i / samplingRate / Tr) * generateGaussianNoise(0, 0.1);
+    std::vector<double> generateReverbImpulsuse(int length, double Tr, double amplitude, double samplingRate) {
+        vector<double> output(length);
+        for (int i = 0; i < length; i++) {
+            output[i] = amplitude * exp(-6.9 * i / samplingRate / Tr);// * generateGaussianNoise(0, 0.1);
+        }
+        return output;
     }
-    return output;
+
+    void writeVectorToFile(const std::string& filename, const std::vector<double>& vec) {
+        // 出力ファイルストリームを開く
+        std::ofstream outFile(filename);
+
+        // ファイルが開けない場合のエラーチェック
+        if (!outFile.is_open()) {
+            //std::cerr << "Error: Unable to open file " << filename << std::endl;
+            return;
+        }
+
+        // ベクトルの内容をファイルに書き込む
+        for (const double& val : vec) {
+            outFile << val << "\n"; // 改行で区切って書き込む
+        }
+
+        // ファイルを閉じる
+        outFile.close();
+        //std::cout << "Successfully wrote vector to " << filename << std::endl;
+    }
+    // 累積エネルギー計算 (逆累積和)
+    std::vector<double> calculateCumulativeEnergy(const std::vector<double>& impulse_response) {
+        std::vector<double> energy(impulse_response.size(), 0.0);
+        double cumulative_sum = 0.0;
+
+        for (int i = impulse_response.size() - 1; i >= 0; --i) {
+            cumulative_sum += impulse_response[i] * impulse_response[i];
+            energy[i] = cumulative_sum;
+        }
+
+        return energy;
+    }
+
+    // 線形フィッティングで傾きを計算
+    std::pair<double, bool> linearFit(const std::vector<double>& x, const std::vector<double>& y, double& intercept) {
+        if (x.size() < 2 || y.size() < 2) {
+            std::cerr << "Error: Not enough points for linear fit." << std::endl;
+            return { 0.0, false };  // 傾きゼロ、失敗フラグ
+        }
+
+        double n = x.size();
+        double sum_x = std::accumulate(x.begin(), x.end(), 0.0);
+        double sum_y = std::accumulate(y.begin(), y.end(), 0.0);
+        double sum_xx = std::inner_product(x.begin(), x.end(), x.begin(), 0.0);
+        double sum_xy = std::inner_product(x.begin(), x.end(), y.begin(), 0.0);
+
+        double denominator = n * sum_xx - sum_x * sum_x;
+        if (std::abs(denominator) < 1e-6) {  // 分母が小さい場合のエラー処理
+            std::cerr << "Error: Denominator is too small in linear fit." << std::endl;
+            return { 0.0, false };
+        }
+
+        double slope = (n * sum_xy - sum_x * sum_y) / denominator;
+        intercept = (sum_y - slope * sum_x) / n;
+
+        return { slope, true };  // 傾き、成功フラグ
+    }
+
+    // 残響時間を計算
+    double calculateRT60(const std::vector<double>& impulse_response, double sampling_rate) {
+        // ステップ 1: 累積エネルギーを計算
+        std::vector<double> cumulative_energy = calculateCumulativeEnergy(impulse_response);
+
+        // ステップ 2: デシベル変換
+        double max_energy = cumulative_energy[0];
+        std::vector<double> energy_db(cumulative_energy.size());
+        std::transform(cumulative_energy.begin(), cumulative_energy.end(), energy_db.begin(),
+            [max_energy](double e) { return 10.0 * std::log10(e / max_energy); });
+
+        // ステップ 3: フィッティング範囲を抽出 (-5dB ~ -35dB)
+        std::vector<double> time, energy_fit;
+        for (size_t i = 0; i < energy_db.size(); ++i) {
+            if (energy_db[i] < -5.0 && energy_db[i] > -35.0) {
+                time.push_back(static_cast<double>(i) / sampling_rate);
+                energy_fit.push_back(energy_db[i]);
+            }
+        }
+
+        // フィッティングデータが不足している場合
+        if (time.size() < 2) {
+            std::cerr << "Error: Not enough data points for fitting range." << std::endl;
+            return -1.0;
+        }
+
+        // ステップ 4: 線形フィッティング
+        double intercept;
+        std::pair<double, bool> result = linearFit(time, energy_fit, intercept);
+        double slope = result.first;
+        bool success = result.second;
+
+        // フィッティング失敗時のエラー処理
+        if (!success) {
+            std::cerr << "Error: Linear fitting failed." << std::endl;
+            return -1.0;
+        }
+
+        // ステップ 5: 残響時間を計算
+        double rt60 = -60.0 / slope;
+        return rt60;
+    }
+
+    // ハニング窓を複素ベクトルに掛ける関数
+    // spectrum : 複素スペクトル
+    // f        : 中心周波数（Hz）
+    // fs       : サンプリング周波数（Hz）
+    void applyHanningWindow(std::vector<std::complex<double>>& spectrum, double f, double fs, size_t window_size) {
+        size_t N = spectrum.size();
+        if (window_size > N) {
+            window_size = N; // 窓サイズはスペクトル長までに制限
+        }
+        if (window_size == 0) return; // 窓サイズ0なら何もしない
+
+        // 周波数軸作成
+        std::vector<double> freq_axis(N);
+        for (size_t i = 0; i < N; ++i) {
+            freq_axis[i] = fs * i / N;
+        }
+
+        // 中心周波数fに最も近いインデックスを求める
+        size_t center_idx = 0;
+        double min_diff = std::abs(freq_axis[0] - f);
+        for (size_t i = 1; i < N; ++i) {
+            double diff = std::abs(freq_axis[i] - f);
+            if (diff < min_diff) {
+                min_diff = diff;
+                center_idx = i;
+            }
+        }
+
+        // ハニング窓を作成（窓サイズ分）
+        std::vector<double> window(window_size);
+        for (size_t i = 0; i < window_size; ++i) {
+            window[i] = 0.5 * (1 - std::cos(2 * 3.14159265 * i / (window_size - 1)));
+        }
+
+        // 窓をスペクトルに掛ける
+        // 窓を中心インデックスに合わせて左右に展開
+        int half = static_cast<int>(window_size / 2);
+        for (size_t i = 0; i < N; ++i) {
+            int dist = static_cast<int>(i) - static_cast<int>(center_idx);
+            if (dist >= -half && dist <= half) {
+                // 窓の該当インデックス
+                size_t w_idx = dist + half;
+                spectrum[i] *= window[w_idx];
+            }
+            else {
+                // 窓外は0にする（スペクトル成分を消す）
+                spectrum[i] = 0;
+            }
+        }
+    }
+
+    void applyBandPassFilter(std::vector<std::complex<double>>& spectrum, double fs, double f_low, double f_high) {
+        size_t N = spectrum.size();
+
+        for (size_t i = 0; i < N; ++i) {
+            double freq = fs * i / N;
+            if (freq < f_low || freq > f_high) {
+                spectrum[i] = 0;  // 通過帯域外はゼロにする
+            }
+        }
+    }
+
+
+    void applySmoothBandPassFilter(std::vector<std::complex<double>>& spectrum, double fs,
+        double f_low, double f_high, double transition_bw) {
+        size_t N = spectrum.size();
+
+        for (size_t i = 0; i < N; ++i) {
+            double freq = fs * i / N;
+
+            if (freq < f_low - transition_bw || freq > f_high + transition_bw) {
+                // 通過帯域外＋フェード領域外は0に
+                spectrum[i] = 0;
+            }
+            else if (freq >= f_low - transition_bw && freq < f_low) {
+                // 下限フェードイン部分：0 → 1にハニングで滑らかに増加
+                double x = (freq - (f_low - transition_bw)) / transition_bw; // 0〜1の正規化
+                double w = 0.5 * (1 - std::cos(3.14159265 * x));  // ハニング窓（半分だけ）
+                spectrum[i] *= w;
+            }
+            else if (freq > f_high && freq <= f_high + transition_bw) {
+                // 上限フェードアウト部分：1 → 0にハニングで滑らかに減少
+                double x = (freq - f_high) / transition_bw; // 0〜1の正規化
+                double w = 0.5 * (1 + std::cos(3.14159265 * x));  // ハニング窓（半分だけ）
+                spectrum[i] *= w;
+            }
+            else {
+                // 通過帯域はそのまま通す
+                // spectrum[i] *= 1.0;
+            }
+        }
+    }
+
+
 }

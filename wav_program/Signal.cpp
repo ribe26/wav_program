@@ -1,4 +1,5 @@
-﻿#include "Signal.h"
+﻿#pragma once
+#include "Signal.h"
 #include <string>
 #include <vector>
 #include "Spectrum.h"
@@ -6,6 +7,7 @@
 #include "wave_defs.h"
 #include "FFT.h"
 #include <cmath>
+#include "utility_functions.h"
 
 // WAVファイルから生成
 Signal::Signal(const char* filename) {
@@ -28,11 +30,11 @@ Signal::Signal(Spectrum spectrum) {
     dataL = std::vector<double>(spectrum.original_length);
     dataR = std::vector<double>(spectrum.original_length);
 
-    std::vector<double> tempLsig;
+    std:: vector<double> tempLsig;
     std:: vector<double> tempRsig;
 
 
-    int n = spectrum.dataL.size()*2;
+    
 
     for (long i = 0; i < spectrum.dataL.size(); i++) {
         tempLsig.push_back(spectrum.dataL[i].real());
@@ -41,18 +43,29 @@ Signal::Signal(Spectrum spectrum) {
         tempRsig.push_back(spectrum.dataR[i].imag());
     }
 
+    int n = tempLsig.size()*2;
     int* ip = new int[2 + (int)std::sqrt(0.5 * n) + 1];
     std::vector<double> w(n * 5 / 4);
+
+
     ip[0] = 0;
-    cdft(n, 1, &tempLsig[0], ip, &w[0]);
-    
+    cdft(tempLsig.size(), 1, &tempLsig[0], ip, &w[0]);
     ip[0] = 0;
-    cdft(n, 1, &tempRsig[0], ip, &w[0]);
+    cdft(tempRsig.size(), 1, &tempRsig[0], ip, &w[0]);
     
+    cout << tempLsig.size() << endl;
+    double ratio = 1.0 / (tempLsig.size() / 2.0);
+    cout << ratio <<endl;
+
+    double Max = 0;
     for (int i = 0; i < spectrum.original_length; i++) {
-        dataL[i] = tempLsig[i*2]/spectrum.original_length;
-        dataR[i] = tempRsig[i * 2]/spectrum.original_length;
+        dataL[i] = tempLsig[i * 2] *ratio;
+        dataR[i] = tempRsig[i * 2] *ratio;
+        if (abs(dataL[i]) > Max) {
+            Max = abs(dataL[i]);
+        }
     }
+    cout <<"Max:" << Max << endl;
     delete[] ip;
    }
 
@@ -101,8 +114,8 @@ void Signal::squared() {
 // MTFを表示する
 void Signal::show_MTF(double freq) {
     std::vector<double> squared_signal;
-    for (size_t i = 0; i < dataL.size() / 2; i++) {
-        squared_signal.push_back(dataL[i * 2] * dataL[i * 2]);
+    for (size_t i = 0; i < dataL.size(); i++) {
+        squared_signal.push_back(dataL[i] * dataL[i]);
     }
     Signal sq_sig(squared_signal, Fs);
 
@@ -112,20 +125,42 @@ void Signal::show_MTF(double freq) {
     std::vector<double> plot_x;
     std::vector<double> plot_y;
     double out = 0;
+    double unitFs = Fs / (double)G.dataL.size();
+    int endIdx = freq/unitFs;
+    
 
-    for (size_t i = 0; i < dataL.size() / 2; i++) {
-        if (Fs / (G.dataL.size() / 2.0) * i >= freq) {
-            break;
-        }
-        plot_x.push_back(Fs / (G.dataL.size() / 2.0) * i);
+    for (size_t i = 0; i <= endIdx; i++) {
+        plot_x.push_back(unitFs * i);
         plot_y.push_back(abs(G.dataL[i]) / power);
-        out += std::sqrt(abs(G.dataL[i])) / power;
     }
-
-    std::cout << out << std::endl;
     matplotlibcpp::plot(plot_x, plot_y);
     matplotlibcpp::show();
+}
+
+// MTFを計算する
+void Signal::calc_MTF(double freq, string filename) {
+    std::vector<double> squared_signal;
+    for (size_t i = 0; i < dataL.size(); i++) {
+        squared_signal.push_back(dataL[i] * dataL[i]);
     }
+    Signal sq_sig(squared_signal, Fs);
+    Spectrum G(sq_sig);
+    double power = this->calc_power();
+
+    std::vector<double> plot_y;
+    double out = 0;
+    double unitFs = Fs / dataL.size();
+    int endIdx = freq / unitFs;
+
+    cout << "unitFs:" << unitFs <<endl;
+    cout << "fileout end idx:" << endIdx << endl;
+
+    for (size_t i = 0; i < endIdx; i++) {
+        plot_y.push_back(abs(G.dataL[i]) / power);
+    }
+    writeVectorToFile(filename, plot_y);
+}
+
 
 // パワーを計算する
 double Signal::calc_power() {

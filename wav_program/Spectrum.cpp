@@ -24,17 +24,12 @@ void Spectrum::FFT(Signal signal) {
     waveFormatpcm = signal.waveFormatpcm;
     waveFileheader = signal.waveFileheader;
 
-    data_length = signal.dataL.size();
-    int* ip = new int[2 + static_cast<int>(sqrt(0.5 * data_length * 2)) + 1];
-    std::vector<double> w(data_length * 2 * 5 / 4);
-    
 
     vector<double> tempL;
     vector<double> tempR;
 
-    
 
-    for (int i = 0; i < signal.dataL.size();i++) {
+    for (int i = 0; i < signal.dataL.size(); i++) {
         tempL.push_back(signal.dataL[i]);
         tempL.push_back(0.0);
         tempR.push_back(signal.dataR[i]);
@@ -48,11 +43,21 @@ void Spectrum::FFT(Signal signal) {
             count *= 2;
         }
     }
-    
+
     while (tempL.size() < count) {
         tempL.push_back(0.0);
         tempR.push_back(0.0);
+        tempL.push_back(0.0);
+        tempR.push_back(0.0);
     }
+
+
+    data_length = tempL.size();
+    int* ip = new int[2 + static_cast<int>(sqrt(0.5 * data_length * 2)) + 1];
+    std::vector<double> w(data_length * 2 * 5 / 4);
+   
+
+    
     
     
     ip[0] = 0;
@@ -66,6 +71,7 @@ void Spectrum::FFT(Signal signal) {
         dataL.push_back({tempL[i*2],tempL[i*2+1]});
         dataR.push_back({ tempR[i * 2],tempR[i * 2 + 1] });
     }
+    data_length = dataL.size();
 }
 
 
@@ -95,17 +101,108 @@ void Spectrum::Conj() {
 }
 
 // パワーを計算する関数
-double Spectrum::calc_power(long freq) {
+double Spectrum::calc_power() {
     double out = 0;
-    long count = 0;
-
     for (long i = 0; i < dataL.size(); i++) {
-        if (Fs / (dataL.size()) * i >= freq) {
-            break;
-        }
-        count++;
         out += abs(dataL[i])* abs(dataL[i]);
     }
 
-    return out / (count * count);
+    return out / dataL.size();
+}
+
+
+double Spectrum::calc_energy() {
+    double out = 0;
+    for (long i = 0; i < dataL.size(); i++) {
+        out += abs(dataL[i]) * abs(dataL[i]);
+    }
+
+    return out;
+}
+
+// パワーを正規化する関数
+void Spectrum::normalize_power() {
+    double power = this->calc_energy();
+    double ratio = sqrt((double)dataL.size()/power);
+    for (long i = 0; i < dataL.size(); i++) {
+        this->dataL[i] *= ratio;
+    }
+}
+
+void Spectrum::set_energy(double energy) {
+    double now_energy = this->calc_energy();
+    double ratio = sqrt(energy / now_energy);
+    for (long i = 0; i < dataL.size(); i++) {
+        this->dataL[i] *= ratio;
+    }
+}
+
+
+
+void Spectrum::squared() {
+    std::vector<complex<double>> tempL(data_length,complex<double>{0,0});
+    std::vector<complex<double>> tempR(data_length, complex<double>{0, 0});
+
+    for (int k = 0; k < data_length/2; k++) {
+        for (int m = 0; m < data_length; m++) {
+            int idx = (k - m + data_length) % data_length;
+            //cout << "(m,idx):(" << m << "," << idx << ")" << endl;
+            tempL[k] += (dataL[m] * dataL[idx]);
+            tempR[k] += (dataR[m] * dataR[idx]);
+        }
+        tempL[k] /= data_length;
+        tempR[k] /= data_length;
+    }
+
+    for (int k = 0; k < data_length/2; k++) {
+        //cout << k << "," << (data_length - 1) - k<<endl;
+        dataL[k] = tempL[k];
+        dataR[k] = tempR[k];
+        dataL[data_length- k] = conj(tempL[k]);
+        dataR[data_length- k] = conj(tempR[k]);
+    }
+
+}
+
+
+std::vector<complex<double>> Spectrum::squared_limit_freq(double freq) {
+    double unitFs = (Fs / (double)data_length);
+    int maxIdx = freq / unitFs;
+    std::vector<complex<double>> tempL(data_length, complex<double>{0, 0});
+    for (int k = 0; k <= maxIdx; k++) {
+        for (int m = 0; m < data_length; m++) {
+            int idx = (k - m + data_length) % data_length;
+            //cout << "(m,idx):(" << m << "," << idx << ")" << endl;
+            tempL[k] += (dataL[m] * dataL[idx]);
+        }
+        tempL[k] /= data_length;
+    }
+    return tempL;
+}
+
+void Spectrum::show_MTF(double freq) {
+    double power = this->calc_power();
+    std::vector<double> plot_x;
+    std::vector<double> plot_y;
+    std::vector<complex<double>> mtf=this->squared_limit_freq(freq);
+
+
+    double unitFs = (Fs / (double)data_length);
+    int maxIdx = freq / unitFs;
+ 
+
+    cout << "freq:" << freq << endl;
+    cout << "Fs:" << Fs << endl;
+    cout << "unitFs:" << unitFs << endl;
+    cout << "data_length:" << data_length << endl;
+    cout << "maxIdx:" << maxIdx << endl;
+    cout << "power:" << power << endl;
+
+
+    for (int i = 0; i <= maxIdx; i++) {
+        plot_x.push_back(unitFs*i);
+        plot_y.push_back(abs(mtf[i]) / power);
+    }
+    matplotlibcpp::plot(plot_x, plot_y);
+    matplotlibcpp::show();
 }

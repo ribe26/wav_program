@@ -20,12 +20,23 @@ public:
 	void FFT(class Signal signal);
 	
 	//パワーの計算
-	double calc_power(long freq);
+	double calc_power();
+	void normalize_power();
 	
+	//エネルギーの計算
+	double calc_energy();
+
+	void set_energy(double energy);
+
 	//複素共役をとる
 	void Conj();
 	//振幅スペクトルをプロット
 	void show();
+
+	void squared();
+	std::vector<complex<double>> squared_limit_freq(double freq);
+
+	void show_MTF(double freq);
 
 	tWaveFormatPcm waveFormatpcm;
 	SWaveFileHeader waveFileheader;

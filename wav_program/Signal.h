@@ -33,7 +33,7 @@ public:
 
 	//MTFを表示
 	void show_MTF(double freq);
-
+	void calc_MTF(double freq, string filename);
 	//ダウンサンプリング 引数分の１にダウンサンプリングする	
 	void down_sampling(unsigned int ratio);
 
