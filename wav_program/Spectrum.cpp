@@ -3,6 +3,7 @@
 #include "FFT.h"
 #include "matplotlibcpp.h"
 #include "math.h"
+#include "utility_functions.h"
 // スペクトラムクラスのコンストラクタ
 Spectrum::Spectrum(Signal signal) {
     Fs = signal.Fs;
@@ -19,6 +20,9 @@ Spectrum::Spectrum(vector<complex<double>> data, double samplingRate, long origi
         //if (i < 10) { cout << "data:" << data[i]; }
     }
 }
+
+
+
 // FFT変換を行う関数
 void Spectrum::FFT(Signal signal) {
     waveFormatpcm = signal.waveFormatpcm;
