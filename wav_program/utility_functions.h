@@ -110,47 +110,69 @@ namespace {
         return { slope, true };  // 傾き、成功フラグ
     }
 
-    // 残響時間を計算
+    // ピーク以降を抜き出す関数
+    std::vector<double> extractPeakAndBeyond(const std::vector<double>& signal) {
+        // ピークのインデックスを探す
+        auto max_it = std::max_element(signal.begin(), signal.end());
+        size_t peak_index = std::distance(signal.begin(), max_it);
+
+        // ピーク以降のデータを抜き出す
+        std::vector<double> peak_and_beyond(signal.begin() + peak_index, signal.end());
+
+        return peak_and_beyond;
+    }
+    // RT60を計算する関数
     double calculateRT60(const std::vector<double>& impulse_response, double sampling_rate) {
-        // ステップ 1: 累積エネルギーを計算
-        std::vector<double> cumulative_energy = calculateCumulativeEnergy(impulse_response);
+        size_t N = impulse_response.size();
 
-        // ステップ 2: デシベル変換
-        double max_energy = cumulative_energy[0];
-        std::vector<double> energy_db(cumulative_energy.size());
-        std::transform(cumulative_energy.begin(), cumulative_energy.end(), energy_db.begin(),
-            [max_energy](double e) { return 10.0 * std::log10(e / max_energy); });
+        // エネルギー（振幅の2乗）を格納するベクター
+        std::vector<double> energy(N);
 
-        // ステップ 3: フィッティング範囲を抽出 (-5dB ~ -35dB)
-        std::vector<double> time, energy_fit;
-        for (size_t i = 0; i < energy_db.size(); ++i) {
-            if (energy_db[i] < -5.0 && energy_db[i] > -35.0) {
-                time.push_back(static_cast<double>(i) / sampling_rate);
-                energy_fit.push_back(energy_db[i]);
+        // エネルギーの積分
+        energy[0] = impulse_response[0] * impulse_response[0];
+        for (size_t i = 1; i < N; ++i) {
+            energy[i] = energy[i - 1] + impulse_response[i] * impulse_response[i];
+        }
+
+        // エネルギーの最大値を取得
+        double max_energy = energy[N - 1];
+
+        // 減衰部分を探す（エネルギーが最大値の1%まで減少した地点）
+        size_t start_idx = N - 1;
+        for (size_t i = N - 1; i > 0; --i) {
+            if (energy[i] <= max_energy * 0.01) {
+                start_idx = i;
+                break;
             }
         }
 
-        // フィッティングデータが不足している場合
-        if (time.size() < 2) {
-            std::cerr << "Error: Not enough data points for fitting range." << std::endl;
-            return -1.0;
+        // 減衰部分（後半部分）のエネルギーを取り出す
+        std::vector<double> decay_energy(energy.begin() + start_idx, energy.end());
+        size_t decay_length = decay_energy.size();
+
+        // 最小二乗法による指数関数のフィッティング
+        double sum_x = 0.0, sum_y = 0.0, sum_xy = 0.0, sum_x2 = 0.0;
+
+        // 時間とエネルギーの対数を計算
+        for (size_t i = 0; i < decay_length; ++i) {
+            double t = i / sampling_rate;  // サンプル番号から秒への変換
+            double y = std::log(decay_energy[i]);  // エネルギーの対数
+            double x = t;
+
+            sum_x += x;
+            sum_y += y;
+            sum_xy += x * y;
+            sum_x2 += x * x;
         }
 
-        // ステップ 4: 線形フィッティング
-        double intercept;
-        std::pair<double, bool> result = linearFit(time, energy_fit, intercept);
-        double slope = result.first;
-        bool success = result.second;
+        // 最小二乗法による傾き（α）の計算
+        double denominator = (decay_length * sum_x2) - (sum_x * sum_x);
+        double alpha = ((decay_length * sum_xy) - (sum_x * sum_y)) / denominator;
 
-        // フィッティング失敗時のエラー処理
-        if (!success) {
-            std::cerr << "Error: Linear fitting failed." << std::endl;
-            return -1.0;
-        }
+        // RT60の計算
+        double RT60 = 60.0 / alpha;
 
-        // ステップ 5: 残響時間を計算
-        double rt60 = -60.0 / slope;
-        return rt60;
+        return RT60;
     }
 
     // ハニング窓を複素ベクトルに掛ける関数
