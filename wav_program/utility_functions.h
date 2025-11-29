@@ -9,6 +9,93 @@
 
 namespace {
     const double PI = 3.14159265358979323846;
+    
+    void show_two_signal(Signal signal1,Signal signal2) {
+        unsigned long n = signal1.dataL.size();
+        double Fs = signal1.Fs;
+        std::vector<double> plot_x(n);
+        std::vector<double> plot_y(n);
+        std::vector<double> plot_y2(n);
+
+        for (size_t i = 0; i < n; i++) {
+            plot_x[i] = i/Fs;
+            plot_y[i] = signal1.dataL[i];
+            plot_y2[i] = signal2.dataL[i];
+        }
+
+        std::map<std::string, std::string> style1;
+        style1["label"] = "original";
+        style1["color"] = "blue";
+        //style1["marker"] = "+";
+        //style1["markeredgecolor"] = "green";
+        style1["linestyle"] = "-";
+
+        std::map<std::string, std::string> style2;
+        style2["label"] = "filtered";
+        style2["color"] = "red";
+        //style1["marker"] = "+";
+        //style1["markeredgecolor"] = "green";
+        style2["linestyle"] = "-";
+
+        matplotlibcpp::plot(plot_x, plot_y,style1);
+        matplotlibcpp::plot(plot_x, plot_y2,style2);
+        matplotlibcpp::title("RIR", { {"fontsize", "14"} });
+        matplotlibcpp::xlabel("time[second]", { {"fontsize", "14"} });
+        matplotlibcpp::ylabel("amplitude", { {"fontsize", "14"} });
+        matplotlibcpp::legend({ {"fontsize", "14"} });
+        matplotlibcpp::show();
+    }
+    
+
+    void show_two_MTF(Signal signal1, Signal signal2,double endFreq) {
+        unsigned long n = signal1.dataL.size();
+        double Fs = signal1.Fs;
+        double unitFs = Fs / n;
+        int endIdx = endFreq / unitFs;
+        std::vector<double> plot_x(endIdx);
+        std::vector<double> plot_y(n);
+        std::vector<double> plot_y2(n);
+
+
+        plot_y = signal1.get_MTF_vector(endIdx);
+        plot_y2 = signal2.get_MTF_vector(endIdx);
+
+
+        for (size_t i = 0; i < endIdx; i++) {
+            plot_x[i] = i *unitFs;
+        }
+
+        /*
+        cout << "plot_MTF_x_length:" << plot_x.size();
+        cout << "plot_MTF_y1_length:" << plot_y.size();
+        cout << "plot_MTF_y2_length:" << plot_y2.size();
+        */
+
+        std::map<std::string, std::string> style1;
+        style1["label"] = "original";
+        style1["color"] = "blue";
+        //style1["marker"] = "+";
+        //style1["markeredgecolor"] = "green";
+        style1["linestyle"] = "-";
+
+        std::map<std::string, std::string> style2;
+        style2["label"] = "filtered";
+        style2["color"] = "red";
+        //style1["marker"] = "+";
+        //style1["markeredgecolor"] = "green";
+        style2["linestyle"] = "-";
+
+        matplotlibcpp::plot(plot_x, plot_y,style1);
+        matplotlibcpp::plot(plot_x, plot_y2,style2);
+        matplotlibcpp::title("MTF", { {"fontsize", "14"} });
+        matplotlibcpp::xlabel("modulation Frequency[Hz]", { {"fontsize", "14"} });
+        matplotlibcpp::ylabel("MTF", { {"fontsize", "14"} });
+        matplotlibcpp::legend({ {"fontsize", "14"} });
+        matplotlibcpp::show();
+    }
+    
+    
+    
     std::vector<double> generateSineWave(int length, double amplitude, double frequency, double samplingRate) {
         std::vector<double> sineWave(length);
 
@@ -111,47 +198,112 @@ namespace {
     }
 
     // 残響時間を計算
-    double calculateRT60(const std::vector<double>& impulse_response, double sampling_rate) {
-        // ステップ 1: 累積エネルギーを計算
-        std::vector<double> cumulative_energy = calculateCumulativeEnergy(impulse_response);
+#include <vector>
+#include <cmath>
+#include <limits>
 
-        // ステップ 2: デシベル変換
-        double max_energy = cumulative_energy[0];
-        std::vector<double> energy_db(cumulative_energy.size());
-        std::transform(cumulative_energy.begin(), cumulative_energy.end(), energy_db.begin(),
-            [max_energy](double e) { return 10.0 * std::log10(e / max_energy); });
+// RIR から RT20 (秒) を求める
+// 返り値：RT20 [s]（計算できない場合は NaN）
+    double computeRT20(const std::vector<double>& rir, double sampleRate)
+    {
+        const double eps = 1e-20;
 
-        // ステップ 3: フィッティング範囲を抽出 (-5dB ~ -35dB)
-        std::vector<double> time, energy_fit;
-        for (size_t i = 0; i < energy_db.size(); ++i) {
-            if (energy_db[i] < -5.0 && energy_db[i] > -35.0) {
-                time.push_back(static_cast<double>(i) / sampling_rate);
-                energy_fit.push_back(energy_db[i]);
+        if (rir.empty() || sampleRate <= 0.0) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+
+        const int N = static_cast<int>(rir.size());
+
+        // 1. Schroeder 積分でエネルギー減衰曲線 (EDC) を計算
+        std::vector<double> edc(N);
+        double sum = 0.0;
+        for (int i = N - 1; i >= 0; --i) {
+            sum += rir[i] * rir[i];
+            edc[i] = sum;
+        }
+
+        // 全体エネルギーが 0 以下なら計算できない
+        if (edc[0] <= 0.0) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+
+        // 2. 0 dB を基準に正規化して dB に変換
+        std::vector<double> edcDb(N);
+        const double edc0 = edc[0];
+        for (int i = 0; i < N; ++i) {
+            double norm = edc[i] / edc0;
+            if (norm < eps) norm = eps;
+            edcDb[i] = 10.0 * std::log10(norm);  // 0 dB から負の方向へ落ちていく
+        }
+
+        // 3. -5 dB と -25 dB を超える点を探す
+        int idxStart = -1; // -5 dB になった最初のインデックス
+        int idxEnd = -1; // -25 dB になった最初のインデックス
+
+        for (int i = 0; i < N; ++i) {
+            if (idxStart < 0 && edcDb[i] <= -5.0) {
+                idxStart = i;
+            }
+            if (idxStart >= 0 && edcDb[i] <= -25.0) {
+                idxEnd = i;
+                break;
             }
         }
 
-        // フィッティングデータが不足している場合
-        if (time.size() < 2) {
-            std::cerr << "Error: Not enough data points for fitting range." << std::endl;
-            return -1.0;
+        // 適切な範囲が見つからなかったら NaN
+        if (idxStart < 0 || idxEnd <= idxStart) {
+            return std::numeric_limits<double>::quiet_NaN();
         }
 
-        // ステップ 4: 線形フィッティング
-        double intercept;
-        std::pair<double, bool> result = linearFit(time, energy_fit, intercept);
-        double slope = result.first;
-        bool success = result.second;
+        // 4. [-5 dB, -25 dB] の範囲で t vs dB の線形回帰
+        const int M = idxEnd - idxStart + 1;
+        double Sx = 0.0, Sy = 0.0, Sxx = 0.0, Sxy = 0.0;
 
-        // フィッティング失敗時のエラー処理
-        if (!success) {
-            std::cerr << "Error: Linear fitting failed." << std::endl;
-            return -1.0;
+        for (int k = 0; k < M; ++k) {
+            int i = idxStart + k;
+            double t = static_cast<double>(i) / sampleRate;  // 時刻 [s]
+            double y = edcDb[i];                             // レベル [dB]
+
+            Sx += t;
+            Sy += y;
+            Sxx += t * t;
+            Sxy += t * y;
         }
 
-        // ステップ 5: 残響時間を計算
-        double rt60 = -60.0 / slope;
-        return rt60;
+        double denom = static_cast<double>(M) * Sxx - Sx * Sx;
+        if (std::fabs(denom) < 1e-20) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+
+        double a = (static_cast<double>(M) * Sxy - Sx * Sy) / denom; // 傾き [dB/s]
+        double b = (Sy - a * Sx) / static_cast<double>(M);           // 切片 [dB]
+
+        // a は負の値（減衰）になるはず
+        if (a >= 0.0) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+
+        // 5. RT20 (T20)：-5〜-25 dB の 20 dB 減衰から 60 dB 分を外挿
+        //   20 dB 減衰時間 = t(-25) - t(-5)
+        //   RT20 (T20) = 3 * (t(-25) - t(-5))
+        // 線形モデル y(t) = a t + b から t(-5), t(-25) を求めて使う。
+        auto t_at_level = [&](double levelDb) -> double {
+            return (levelDb - b) / a;     // a < 0 なので正になる
+            };
+
+        double t_m5 = t_at_level(-5.0);
+        double t_m25 = t_at_level(-25.0);
+        double deltaT20 = t_m25 - t_m5;
+
+        if (deltaT20 <= 0.0) {
+            return std::numeric_limits<double>::quiet_NaN();
+        }
+
+        // RT20 = 3 * 20dB減衰時間（=換算 60 dB）
+        double rt20 = 3.0 * deltaT20;
+        return rt20;
     }
+
 
     // ハニング窓を複素ベクトルに掛ける関数
     // spectrum : 複素スペクトル

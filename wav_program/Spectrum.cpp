@@ -87,7 +87,16 @@ void Spectrum::show() {
         //cout << "x:" << plot_x[i] <<"y:" << plot_y[i]<<endl;
     }
 
-    matplotlibcpp::plot(plot_x, plot_y);
+    std::map<std::string, std::string> style1;
+    style1["label"] = "PowerSpectrum";
+    style1["color"] = "blue";
+    style1["linestyle"] = "-";
+    matplotlibcpp::plot(plot_x, plot_y,style1);
+
+    matplotlibcpp::title("PowerSpectrum", { {"fontsize", "14"} });
+    matplotlibcpp::xlabel("Modulation Frequency[Hz]", { {"fontsize", "14"} });
+    matplotlibcpp::ylabel("PowerSpectrum[dB]", { {"fontsize", "14"} });
+    matplotlibcpp::legend({ {"fontsize", "14"} });
     matplotlibcpp::show();
 }
 
@@ -190,19 +199,30 @@ void Spectrum::show_MTF(double freq) {
     double unitFs = (Fs / (double)data_length);
     int maxIdx = freq / unitFs;
  
-
+    /*
     cout << "freq:" << freq << endl;
     cout << "Fs:" << Fs << endl;
     cout << "unitFs:" << unitFs << endl;
     cout << "data_length:" << data_length << endl;
     cout << "maxIdx:" << maxIdx << endl;
     cout << "power:" << power << endl;
-
+    */
 
     for (int i = 0; i <= maxIdx; i++) {
         plot_x.push_back(unitFs*i);
         plot_y.push_back(abs(mtf[i]) / power);
     }
-    matplotlibcpp::plot(plot_x, plot_y);
+
+    std::map<std::string, std::string> style1;
+    style1["label"] = "MTF";
+    style1["color"] = "blue";
+    style1["linestyle"] = "-";
+    matplotlibcpp::plot(plot_x, plot_y,style1);
+
+    matplotlibcpp::title("RIR-MTF", { {"fontsize", "14"} });
+    matplotlibcpp::xlabel("Modulation Frequency[Hz]", { {"fontsize", "14"} });
+    matplotlibcpp::ylabel("MTF", { {"fontsize", "14"} });
+    matplotlibcpp::legend({ {"fontsize", "14"} });
+
     matplotlibcpp::show();
 }

@@ -76,11 +76,21 @@ void Signal::show() {
     std::vector<double> plot_y(n);
 
     for (size_t i = 0; i < n; i++) {
-        plot_x[i] = i;
+        plot_x[i] = i/Fs;
         plot_y[i] = dataL[i];
     }
 
-    matplotlibcpp::plot(plot_x, plot_y);
+
+    std::map<std::string, std::string> style1;
+    style1["label"] = "Signal";
+    style1["color"] = "blue";
+    style1["linestyle"] = "-";
+    matplotlibcpp::plot(plot_x, plot_y, style1);
+
+    matplotlibcpp::title("RIR", { {"fontsize", "14"} });
+    matplotlibcpp::xlabel("time[second]", { {"fontsize", "14"} });
+    matplotlibcpp::ylabel("amplitude", { {"fontsize", "14"} });
+    matplotlibcpp::legend({ {"fontsize", "14"} });
     matplotlibcpp::show();
 }
 
@@ -101,6 +111,26 @@ void Signal::normalize() {
     for (auto& e : this->dataR) {
         e /= normR;
     }
+
+}
+
+//直接音以降を取り出す
+void Signal::get_after_peak() {
+    int peakIndex = 0;
+    double peakAbs = std::fabs(dataL[0]);
+
+    for (int i = 1; i < static_cast<int>(dataL.size()); ++i) {
+        double a = std::fabs(dataL[i]);
+        if (a > peakAbs) {
+            peakAbs = a;
+            peakIndex = i;
+        }
+    }
+
+    // 2. ピーク以降の部分だけを切り出して新しい vector を作る
+    std::vector<double> tail(dataL.begin() + peakIndex, dataL.end());
+
+    dataL = tail;
 }
 
 // 二乗する
@@ -133,7 +163,19 @@ void Signal::show_MTF(double freq) {
         plot_x.push_back(unitFs * i);
         plot_y.push_back(abs(G.dataL[i]) / power);
     }
-    matplotlibcpp::plot(plot_x, plot_y);
+
+
+
+    std::map<std::string, std::string> style1;
+    style1["label"] = "MTF";
+    style1["color"] = "blue";
+    style1["linestyle"] = "-";
+    matplotlibcpp::plot(plot_x, plot_y, style1);
+
+    matplotlibcpp::title("RIR-MTF", { {"fontsize", "14"} });
+    matplotlibcpp::xlabel("Modulation Frequency[Hz]", { {"fontsize", "14"} });
+    matplotlibcpp::ylabel("MTF", { {"fontsize", "14"} });
+    matplotlibcpp::legend({ {"fontsize", "14"} });
     matplotlibcpp::show();
 }
 
@@ -161,6 +203,25 @@ void Signal::calc_MTF(double freq, string filename) {
     writeVectorToFile(filename, plot_y);
 }
 
+vector<double> Signal::get_MTF_vector(int endIdx) {
+    std::vector<double> squared_signal;
+    for (size_t i = 0; i < dataL.size(); i++) {
+        squared_signal.push_back(dataL[i] * dataL[i]);
+    }
+    Signal sq_sig(squared_signal, Fs);
+    Spectrum G(sq_sig);
+    double power = this->calc_power();
+
+    std::vector<double> plot_y;
+    double out = 0;
+    double unitFs = Fs / dataL.size();
+
+    for (size_t i = 0; i < endIdx; i++) {
+        plot_y.push_back(abs(G.dataL[i]) / power);
+    }
+    return plot_y;
+}
+
 
 // パワーを計算する
 double Signal::calc_power() {
@@ -186,6 +247,16 @@ void Signal::down_sampling(unsigned int ratio) {
 
     dataL = new_dataL;
     dataR = new_dataR;
+}
+
+void Signal::add_zero(long length) {
+    long needed = 0;
+    needed = length - dataL.size();
+    if (needed <= 0) {
+        return;
+    }
+    std::vector<double> zeros(needed, 0.0);
+    dataL.insert(dataL.begin(), zeros.begin(), zeros.end());
 }
 
 // WAVファイル関係

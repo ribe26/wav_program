@@ -16,154 +16,184 @@
 int main()
 {
 
-    // Parameters for the sine wave
-    int length = 65536;         // Length of the sine wave
-    double amplitude = 1.0;   // Amplitude of the sine wave
-    double frequency = 5.0;   // Frequency of the sine wave in Hz
-    double samplingRate = 48000.0; // Sampling rate in Hz
+    // init Parameter
+    int length = 0;         // Length of the sine wave
+    double samplingRate = 0; // Sampling rate in Hz
+    double MTF_MAX = 80;
 
 
-    //std::vector<double> rir = generateReverbImpulsuse(length, 0.5, amplitude, samplingRate);
-    //Signal c(rir, samplingRate);
-    //Signal c2 = c;
 
-    std::vector<double> rir = generateReverbImpulsuse(length, 1.3, amplitude, samplingRate);
-    /*
-    std::vector<double> sine1 = generateSineWave(length, 10.0, 5, samplingRate);
-    std::vector<double> sine2 = generateSineWave(length, 1.0, 50, samplingRate);
-    std::vector<double> sine3 = generateSineWave(length, 0.25, 100, samplingRate);
-    std::vector<double> sine4 = generateSineWave(length, 0.125, 500, samplingRate);
-    std::vector<double> rir(length);
-    for (int i = 0; i < length; i++) {
-        rir[i] = sine1[i] + sine2[i] + sine3[i] + sine4[i];
-    }
-    */
-
+    //残響を除去したいインパルス応答の読み込み
+    //インパルス応答はSignalクラスが持つ変数のdataLというvector<double>型のベクトルで保存されている。
     Signal c_original("rir/usina_main_s1_p5.wav");
     Signal c("rir/usina_main_s1_p5.wav");
-    
-    //Signal c_original(rir,samplingRate);
-    //Signal c(rir, samplingRate);
-    c.show();
-    c.show_MTF(20);
-    c.calc_MTF(20, "original.txt");
+
+    long original_length = c.dataL.size();
+
+    //c_original.get_after_peak();
+    c.get_after_peak();
+
+    long AP_length = c.dataL.size();
+
+    //c.down_sampling(3.0);
+    //c_original.down_sampling(3.0);
+
+    c_original.write("IR_usina_after_peak_16000.wav");
+
+    //show_two_signal(c_original, c);
+    //show_two_MTF(c_original, c,MTF_MAX);
+
+
+    c.add_zero(original_length);
+    show_two_signal(c_original, c);
+
+    //読み込んだインパルス応答の情報を表示
+    c.show();//インパルス応答をプロット
+    //c.show_MTF(600);//インパルス応答のMTFを引数で指定した数値の変調周波数までプロット
+    c.calc_MTF(600, "original.txt");//引数で指定した変調周波数までのMTFをテキストファイルに保存
+
+    //元のインパルスと形成したフィルタを畳み込んだインパルスそれぞれの残響時間を表示する。
+
+
+    //読み込んだインパルス応答をスペクトルに変換
+    //スペクトルははSpectrumクラスが持つ変数のdataLというvector<complex<double>>型のベクトルで保存されている。
     Spectrum C(c);
     Spectrum C_ORIGINAL(c_original);
-    C.show();
-    double original_energy = C.calc_energy();
-    C.show_MTF(20);
 
+    //スペクトル情報の表示
+    C.show();//スペクトルをプロット
+    C.show_MTF(MTF_MAX);
+    //初期状態のインパルス応答のエネルギーを計算しておく。
+    double original_energy = C.calc_energy();
+
+    //読み込んだインパルス応答の長さ、サンプリング周波数を変数に保存しておく。
     length = c.dataL.size();
     samplingRate = c.Fs;
 
+    //元のインパルスと形成したフィルタを畳み込んだインパルスそれぞれの残響時間を表示する。
+    double rt60original = computeRT20(c_original.dataL, samplingRate);
+    cout << "rt60 c original:" << rt60original << endl;
 
-    complex<double> init_value(1.0, 0.0);
+
+
+
+    //フィルタHをここで定義、これを更新して最後に畳み込むことでインパルス応答の残響時間抑制を狙う。
+    complex<double> init_value(1.0, 0.0);//フィルタHを初期化するための複素数(1.0+0.0i)　全て１で初期化(時間領域ではt=0でパルスが立つ信号にあたる。)
     std::vector<complex<double>>h(C.dataL.size(), init_value);
-    Spectrum H(h, samplingRate, length);
-    H.show();
+    Spectrum H(h, samplingRate, length);//フィルタHをspectrumクラスとして定義
+    H.show();//フィルタの初期状態を表示
     std::cout << "H power:" << H.calc_power() << endl;
     std::cout << "H energy:" << H.calc_energy() << endl;
 
 
-    double endMTFfreq = 20;
+    //最適化のパラメータを定義
+
+    double endMTFfreq = MTF_MAX;//最適化においてMTFを考慮する上限
     double unitFs = c.Fs / (double)c.dataL.size();
-    int endIdx = endMTFfreq / unitFs;
-
-
-    double bandStartFreq = 2000;
-    double bandEndFreq = 16000;
-    int bandStartIdx = bandStartFreq / unitFs;
-    int bandEndIdx = bandEndFreq / unitFs;
-    /*
-    for (int i = 0; i < C.dataL.size()/2; i++) {
-        if (i<bandStartIdx || i>bandEndIdx) {
-            C.dataL[i] = 0;
-            C.dataL[C.dataL.size() - i] = 0;
-        }
-    }
-    */
-    //original_energy = C.calc_energy();
+    int endIdx = endMTFfreq / unitFs;//MTFの上限周波数がvectorのインデックスの値でどこにあたるかを計算
 
 
 
-
-    //vector<int> target_index = {15,16,17,18,19,20,21,22,23,24,25,26,27};
+    //0~endIdxの整数を連番で持つvectorを定義(forループでこのvectorに格納されている添え字の変調周波数において、MTFのフィルタHについての勾配を計算し、最適化を行っている。)
     std::vector<int> target_index(endIdx + 1);  // サイズn+1のvectorを作成
     std::iota(target_index.begin(), target_index.end(), 0);
 
 
+    //フィルタ計算における暫定の値を保存するための変数やクラス
     complex<double> complex_zero(0.0, 0.0);
     std::vector<complex<double>>H_step(C.dataL.size(), complex_zero);
     std::vector<complex<double>>G_temp(C.dataL.size(), complex_zero);
     Spectrum G(G_temp, samplingRate, length);
 
-    int iteration = 1000;
-    double step = 0.000000000001;
 
+    //最適化のループ回数とステップサイズを定義
+    int iteration = 5000;
+    double step = 0.000000000001;
+    //double step = 0.0000000001;
+
+    //フィルタHの最適化を開始
     for (int j = 0; j < iteration; j++) {
-        std::cout << "iteration:" << j << endl;
+        if (j % 100 == 0) { std::cout << "iteration:" << j << endl; }
         //cout << "H power:" << H.calc_energy() << endl;
         std::fill(G_temp.begin(), G_temp.end(), complex_zero);
         for (int k = 0; k < target_index.size(); k++) {
 
+            /*
             for (int i = 0; i < G.dataL.size(); i++) {
                 G.dataL[i] = C.dataL[i] * H.dataL[i];
                 //G.dataL[G.dataL.size() - i] = conj(G.dataL[i]);
             }
-            G.set_energy(original_energy);
 
-            
+            G.set_energy(original_energy);
+            */
+
             for (int m = 0; m < C.dataL.size(); m++) {
                 int idx = (target_index[k] - m + C.dataL.size()) % C.dataL.size();
                 //cout << "(m,idx):(" << m << "," << idx << ")" << endl;
-                G_temp[target_index[k]] += (G.dataL[m] * G.dataL[idx]);
+                //G_temp[target_index[k]] += (G.dataL[m] * G.dataL[idx]);
+                G_temp[target_index[k]] = C.dataL[m] *C.dataL[idx]*H.dataL[m] * H.dataL[idx];
             }
-            
 
-            G_temp[target_index[k]]/= (double)G.dataL.size();
+
+            G_temp[target_index[k]] /= (double)G.dataL.size();
             //G_temp[target_index[k]] = G.dataL[target_index[k]];
             double div = (C.dataL.size() * abs(G_temp[target_index[k]]));
 
-            for (int p = 0; p < C.dataL.size()/2; p++) {
+            for (int p = 0; p < C.dataL.size() / 2; p++) {
                 int idx = (target_index[k] - p + C.dataL.size()) % C.dataL.size();
-
+                //フィルタHの各周波数についての目的関数の勾配を計算
+                //H_step[p] += step * (G_temp[target_index[k]] * conj(C.dataL[p]) * conj(C.dataL[idx]) * conj(H.dataL[idx])) / div;
                 H_step[p] += step * (G_temp[target_index[k]] * conj(C.dataL[p]) * conj(C.dataL[idx]) * conj(H.dataL[idx])) / div;
                 //H_step[p] += step * conj(G_temp[k]) * C.dataL[p] * C.dataL[idx] * H.dataL[idx];
+                //H_step[p] += step * (conj(H.dataL[p])*abs(C.dataL[p]*C.dataL[p]));
+
             }
         }
-        for (int p = 0; p < C.dataL.size()/2; p++) {
+        //フィルタ更新
+        for (int p = 0; p < C.dataL.size() / 2; p++) {
             H.dataL[p] += H_step[p];
             H.dataL[H.dataL.size() - p] = conj(H.dataL[p]);
         }
+        //フィルタのエネルギーが初期状態と同様になるように調節
         H.normalize_power();
         std::fill(H_step.begin(), H_step.end(), complex_zero);
     }
 
+    //完成したフィルタを表示
     std::cout << "H power:" << H.calc_power() << endl;
     std::cout << "H energy:" << H.calc_energy() << endl;
     H.show();
+    Signal H_inv(H);
+    H_inv.show();
 
-
-    cout << "original length:" << C.dataL.size() << endl;
-    cout << "filter length:" << H.dataL.size() << endl;
+    //フィルタをインパルス応答に畳み込む。
     for (int p = 0; p < C.dataL.size(); p++) {
         C.dataL[p] = C_ORIGINAL.dataL[p] * H.dataL[p];
-        if (p > C.dataL.size()/2-200 && p<C.dataL.size()/2) { cout << H.dataL[p] << endl; }
+        //if (p > C.dataL.size() / 2 - 200 && p < C.dataL.size() / 2) { cout << H.dataL[p] << endl; }
     }
+    //畳み込んだ結果が元のインパルス応答のエネルギーと同様になるように調節。
     C.set_energy(C_ORIGINAL.calc_energy());
-    C.show();
-    C.show_MTF(20);
+    //畳み込んだ結果のインパルス応答のスペクトルを表示
+    //C.show();
+    //C.show_MTF(20);
 
+    //時間領域に逆変換して表示
     Signal c_inv(C);
-    c_inv.show();
-    c_inv.show_MTF(20);
-    c_inv.calc_MTF(20, "filtered.txt");
+    //c_inv.show();
+    //c_inv.show_MTF(600);
+    //MTFを計算してテキストに出力する
+    c_inv.calc_MTF(600, "filtered.txt");
+    c_inv.write("filtered_IR_usina.wav");
 
 
-    double rt60original = calculateRT60(c_original.dataL, samplingRate);
-    cout << "rt60 c original:" << rt60original << endl;
 
-    double rt60filtered = calculateRT60(c_inv.dataL, samplingRate);
+    show_two_signal(c_original, c_inv);
+    show_two_MTF(c_original, c_inv, MTF_MAX);
+
+
+
+
+    double rt60filtered = computeRT20(c_inv.dataL, samplingRate);
     cout << "rt60 c filtered" << rt60filtered << endl;
 
 }

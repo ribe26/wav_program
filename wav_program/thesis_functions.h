@@ -67,7 +67,7 @@ namespace {
 	}
 
 
-
+    /*
     void deReverbe(std::vector<double> rir, double startFs, double endFs, int FilterLength,double minFm,double RT) {
         int length = 48000;         // Length of the sine wave
         double samplingRate = 48000.0; // Sampling rate in Hz
@@ -82,7 +82,7 @@ namespace {
         c.calc_MTF(20,filename);
 
 
-        double rt60original = calculateRT60(c.dataL, samplingRate);
+        double rt60original = computeRT20(c.dataL, samplingRate);
         c2.squared();
         Spectrum C(c);
         Spectrum CT(c);
@@ -201,4 +201,5 @@ namespace {
                 cout << "-----------------------------" << endl;
             }
         }
+        */
 }

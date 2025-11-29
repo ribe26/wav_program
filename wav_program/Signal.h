@@ -28,14 +28,20 @@ public:
 	//信号を二乗する
 	void squared();
 
+	void get_after_peak();
+
 	//信号のパワーの計算
 	double calc_power();
 
 	//MTFを表示
 	void show_MTF(double freq);
 	void calc_MTF(double freq, string filename);
+	vector<double>get_MTF_vector(int endIdx);
 	//ダウンサンプリング 引数分の１にダウンサンプリングする	
 	void down_sampling(unsigned int ratio);
+
+	//任意長さになるまでゼロパディング
+	void add_zero(long length);
 
 	//wavファイル読み込み関係---------------------------------------------------------
 	int readfmtChunk(FILE* fp, tWaveFormatPcm* waveFmtPcm);
