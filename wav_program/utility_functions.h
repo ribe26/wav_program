@@ -134,9 +134,23 @@ namespace {
 
     std::vector<double> generateReverbImpulsuse(int length, double Tr, double amplitude, double samplingRate) {
         vector<double> output(length);
+        //vector<double> SineWave = generateSineWave(length, 1.0, 48000, samplingRate);
+
+
+
         for (int i = 0; i < length; i++) {
-            output[i] = amplitude * exp(-6.9 * i / samplingRate / Tr);// * generateGaussianNoise(0, 0.1);
+            output[i] = amplitude * exp(-6.9 * i / samplingRate / Tr)*generateGaussianNoise(0.0,1.0);
         }
+
+        double maxL = *std::max_element(output.begin(), output.end());
+        double minL = *std::min_element(output.begin(), output.end());
+        double normL = std::max(std::abs(maxL), std::abs(minL));
+
+        for (auto& e : output) {
+            e /= normL;
+            //e *= 100.0;
+        }
+
         return output;
     }
 

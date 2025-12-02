@@ -19,32 +19,39 @@ int main()
     // init Parameter
     int length = 0;         // Length of the sine wave
     double samplingRate = 0; // Sampling rate in Hz
-    double MTF_MAX = 80;
+    double MTF_MAX = 100;
 
 
+
+    //std::vector<double> IR = generateReverbImpulsuse(96000, 1.5, 1, 48000);
 
     //残響を除去したいインパルス応答の読み込み
     //インパルス応答はSignalクラスが持つ変数のdataLというvector<double>型のベクトルで保存されている。
-    Signal c_original("rir/usina_main_s1_p5.wav");
-    Signal c("rir/usina_main_s1_p5.wav");
+    Signal c_original("rir/air_type1_air_binaural_lecture_1_4.wav");
+    Signal c("rir/air_type1_air_binaural_lecture_1_4.wav");
+    //Signal c_original(IR, 48000);
+    //Signal c(IR, 48000);
+
+    c_original.normalize();
+    c.normalize();
 
     long original_length = c.dataL.size();
 
+    //c.down_sampling(2.0);
+    //c_original.down_sampling(2.0);
+
     //c_original.get_after_peak();
-    c.get_after_peak();
+    //c.get_after_peak();
+    //long AP_length = c.dataL.size();
 
-    long AP_length = c.dataL.size();
 
-    //c.down_sampling(3.0);
-    //c_original.down_sampling(3.0);
-
-    c_original.write("IR_usina_after_peak_16000.wav");
+    //c_original.write("IR_alcuin_AP_48000Hz.wav");
 
     //show_two_signal(c_original, c);
     //show_two_MTF(c_original, c,MTF_MAX);
 
 
-    c.add_zero(original_length);
+    //c.add_zero(original_length);
     show_two_signal(c_original, c);
 
     //読み込んだインパルス応答の情報を表示
@@ -62,7 +69,7 @@ int main()
 
     //スペクトル情報の表示
     C.show();//スペクトルをプロット
-    C.show_MTF(MTF_MAX);
+    C.show_MTF(50);
     //初期状態のインパルス応答のエネルギーを計算しておく。
     double original_energy = C.calc_energy();
 
@@ -88,6 +95,9 @@ int main()
 
     //最適化のパラメータを定義
 
+
+
+
     double endMTFfreq = MTF_MAX;//最適化においてMTFを考慮する上限
     double unitFs = c.Fs / (double)c.dataL.size();
     int endIdx = endMTFfreq / unitFs;//MTFの上限周波数がvectorのインデックスの値でどこにあたるかを計算
@@ -99,6 +109,8 @@ int main()
     std::iota(target_index.begin(), target_index.end(), 0);
 
 
+
+
     //フィルタ計算における暫定の値を保存するための変数やクラス
     complex<double> complex_zero(0.0, 0.0);
     std::vector<complex<double>>H_step(C.dataL.size(), complex_zero);
@@ -107,9 +119,9 @@ int main()
 
 
     //最適化のループ回数とステップサイズを定義
-    int iteration = 5000;
-    double step = 0.000000000001;
-    //double step = 0.0000000001;
+    int iteration = 10000;
+    double step = 0.01;
+    //double step = 0.00000000000000000001;
 
     //フィルタHの最適化を開始
     for (int j = 0; j < iteration; j++) {
@@ -137,8 +149,9 @@ int main()
 
             G_temp[target_index[k]] /= (double)G.dataL.size();
             //G_temp[target_index[k]] = G.dataL[target_index[k]];
-            double div = (C.dataL.size() * abs(G_temp[target_index[k]]));
-
+            //double div = (C.dataL.size() * abs(G_temp[target_index[k]]));
+            //double div = C.dataL.size()/2.0;
+            double div = 1.0;
             for (int p = 0; p < C.dataL.size() / 2; p++) {
                 int idx = (target_index[k] - p + C.dataL.size()) % C.dataL.size();
                 //フィルタHの各周波数についての目的関数の勾配を計算
@@ -183,12 +196,16 @@ int main()
     //c_inv.show_MTF(600);
     //MTFを計算してテキストに出力する
     c_inv.calc_MTF(600, "filtered.txt");
-    c_inv.write("filtered_IR_usina.wav");
+    c_inv.write("filtered_IR_baptist .wav");
 
+
+    show_two_MTF(c_original, c_inv, 100);
+    c_original.normalize();
+    c_inv.normalize();
 
 
     show_two_signal(c_original, c_inv);
-    show_two_MTF(c_original, c_inv, MTF_MAX);
+    
 
 
 
