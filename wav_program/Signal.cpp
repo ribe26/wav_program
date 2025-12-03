@@ -133,6 +133,22 @@ void Signal::get_after_peak() {
     dataL = tail;
 }
 
+void Signal::set_2sec() {
+    int size = Fs * 2;
+    if (dataL.size() > size) {
+        dataL.resize(size);
+        dataR.resize(size);
+    }
+    else if (dataL.size()<size) {
+        cout << "resize 2sec Fs:" << Fs << endl;
+        for (int i = 0;dataL.size() < size;i++) {
+            dataL.push_back(0.0);
+            dataR.push_back(0.0);
+        }
+        cout << "resize 2sec size:" << dataL.size() << endl;
+    }
+}
+
 // 二乗する
 void Signal::squared() {
     for (size_t i = 0; i < dataL.size(); i++) {
@@ -233,7 +249,8 @@ double Signal::calc_power() {
 }
 
 // ダウンサンプリング
-void Signal::down_sampling(unsigned int ratio) {
+void Signal::down_sampling(double Fs_in) {
+    /*
     Fs = Fs / ratio;
     std::vector<double> new_dataL;
     std::vector<double> new_dataR;
@@ -247,6 +264,13 @@ void Signal::down_sampling(unsigned int ratio) {
 
     dataL = new_dataL;
     dataR = new_dataR;
+    */
+
+    std::vector<double> new_dataL = resample(dataL, Fs, Fs_in);
+    std::vector<double> new_dataR = resample(dataR, Fs, Fs_in);
+    dataL = new_dataL;
+    dataR = new_dataR;
+    Fs = Fs_in;
 }
 
 void Signal::add_zero(long length) {
@@ -560,3 +584,6 @@ int Signal::write(const char* outFile) {
     fclose(fpOut);
     return 0;
 }
+
+
+

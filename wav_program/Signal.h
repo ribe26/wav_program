@@ -38,10 +38,14 @@ public:
 	void calc_MTF(double freq, string filename);
 	vector<double>get_MTF_vector(int endIdx);
 	//ダウンサンプリング 引数分の１にダウンサンプリングする	
-	void down_sampling(unsigned int ratio);
+	void down_sampling(double freq);
 
 	//任意長さになるまでゼロパディング
 	void add_zero(long length);
+
+	//IRの長さを2秒に整える。
+	void set_2sec();
+
 
 	//wavファイル読み込み関係---------------------------------------------------------
 	int readfmtChunk(FILE* fp, tWaveFormatPcm* waveFmtPcm);

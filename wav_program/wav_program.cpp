@@ -19,7 +19,7 @@ int main()
     // init Parameter
     int length = 0;         // Length of the sine wave
     double samplingRate = 0; // Sampling rate in Hz
-    double MTF_MAX = 100;
+    double MTF_MAX = 15;
 
 
 
@@ -27,18 +27,21 @@ int main()
 
     //残響を除去したいインパルス応答の読み込み
     //インパルス応答はSignalクラスが持つ変数のdataLというvector<double>型のベクトルで保存されている。
-    Signal c_original("rir/air_type1_air_binaural_lecture_1_4.wav");
-    Signal c("rir/air_type1_air_binaural_lecture_1_4.wav");
+    Signal c_original("rir/air_type1_air_binaural_lecture_0_1.wav");
+    Signal c("rir/air_type1_air_binaural_lecture_0_1.wav");
     //Signal c_original(IR, 48000);
     //Signal c(IR, 48000);
+
+    long original_length = c.dataL.size();
+
+    c.down_sampling(16000.0);
+    c_original.down_sampling(16000.0);
 
     c_original.normalize();
     c.normalize();
 
-    long original_length = c.dataL.size();
-
-    //c.down_sampling(2.0);
-    //c_original.down_sampling(2.0);
+    c.set_2sec();
+    c_original.set_2sec();
 
     //c_original.get_after_peak();
     //c.get_after_peak();
@@ -69,17 +72,22 @@ int main()
 
     //スペクトル情報の表示
     C.show();//スペクトルをプロット
-    C.show_MTF(50);
+    C.show_MTF(MTF_MAX+5.0);
     //初期状態のインパルス応答のエネルギーを計算しておく。
     double original_energy = C.calc_energy();
 
     //読み込んだインパルス応答の長さ、サンプリング周波数を変数に保存しておく。
     length = c.dataL.size();
     samplingRate = c.Fs;
+    cout << "Fs" << c.Fs << endl;
 
     //元のインパルスと形成したフィルタを畳み込んだインパルスそれぞれの残響時間を表示する。
     double rt60original = computeRT20(c_original.dataL, samplingRate);
+    double STIoriginal = computeSTI_fromIR_multiband(c_original.dataL, samplingRate);
     cout << "rt60 c original:" << rt60original << endl;
+    cout << "STI c original:" << STIoriginal << endl;
+
+    
 
 
 
@@ -97,16 +105,19 @@ int main()
 
 
 
-
+    double startMTFfreq = 1.0;
     double endMTFfreq = MTF_MAX;//最適化においてMTFを考慮する上限
     double unitFs = c.Fs / (double)c.dataL.size();
+    int startIdx = startMTFfreq / unitFs;
     int endIdx = endMTFfreq / unitFs;//MTFの上限周波数がvectorのインデックスの値でどこにあたるかを計算
 
 
 
     //0~endIdxの整数を連番で持つvectorを定義(forループでこのvectorに格納されている添え字の変調周波数において、MTFのフィルタHについての勾配を計算し、最適化を行っている。)
-    std::vector<int> target_index(endIdx + 1);  // サイズn+1のvectorを作成
-    std::iota(target_index.begin(), target_index.end(), 0);
+    //std::vector<int> target_index(endIdx + 1);  // サイズn+1のvectorを作成
+    //std::iota(target_index.begin(), target_index.end(), 0);
+
+    std::vector<int> target_index = make_range(startIdx, endIdx);
 
 
 
@@ -119,8 +130,8 @@ int main()
 
 
     //最適化のループ回数とステップサイズを定義
-    int iteration = 10000;
-    double step = 0.01;
+    int iteration = 20000;
+    double step = 1.0;
     //double step = 0.00000000000000000001;
 
     //フィルタHの最適化を開始
@@ -129,6 +140,12 @@ int main()
         //cout << "H power:" << H.calc_energy() << endl;
         std::fill(G_temp.begin(), G_temp.end(), complex_zero);
         for (int k = 0; k < target_index.size(); k++) {
+            
+            /*
+            if (k % 2 == 1) {
+                continue;
+            }
+            */
 
             /*
             for (int i = 0; i < G.dataL.size(); i++) {
@@ -173,6 +190,7 @@ int main()
     }
 
     //完成したフィルタを表示
+    H.normalize_power();
     std::cout << "H power:" << H.calc_power() << endl;
     std::cout << "H energy:" << H.calc_energy() << endl;
     H.show();
@@ -199,7 +217,7 @@ int main()
     c_inv.write("filtered_IR_baptist .wav");
 
 
-    show_two_MTF(c_original, c_inv, 100);
+    show_two_MTF(c_original, c_inv, MTF_MAX+5.0);
     c_original.normalize();
     c_inv.normalize();
 
@@ -208,10 +226,17 @@ int main()
     
 
 
+    //元のインパルスと形成したフィルタを畳み込んだインパルスそれぞれの残響時間を表示する。
+    rt60original = computeRT20(c_original.dataL, samplingRate);
+    STIoriginal = computeSTI_fromIR_multiband(c_original.dataL, samplingRate);
+    cout << "rt60 c original:" << rt60original << endl;
+    cout << "STI c original:" << STIoriginal << endl;
 
-
-    double rt60filtered = computeRT20(c_inv.dataL, samplingRate);
-    cout << "rt60 c filtered" << rt60filtered << endl;
+    //元のインパルスと形成したフィルタを畳み込んだインパルスそれぞれの残響時間を表示する。
+    double rt60inv = computeRT20(c_inv.dataL, samplingRate);
+    double STIinv = computeSTI_fromIR_multiband(c_inv.dataL, samplingRate);
+    cout << "rt60 c inv:" << rt60inv << endl;
+    cout << "STI c inv:" << STIinv << endl;
 
 }
 

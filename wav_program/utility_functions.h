@@ -9,6 +9,91 @@
 
 namespace {
     const double PI = 3.14159265358979323846;
+
+    //-------------------------------------
+// Biquad band-pass フィルタ
+//-------------------------------------
+    struct Biquad {
+        double b0, b1, b2;
+        double a1, a2;
+        double z1, z2;
+
+        Biquad() : b0(1), b1(0), b2(0), a1(0), a2(0), z1(0), z2(0) {}
+
+        double process(double x) {
+            // Direct Form II
+            double y = b0 * x + z1;
+            z1 = b1 * x - a1 * y + z2;
+            z2 = b2 * x - a2 * y;
+            return y;
+        }
+
+        void reset() {
+            z1 = z2 = 0.0;
+        }
+    };
+
+    // RBJ cookbook 版 Band-pass (constant skirt gain)
+    // centerFreq: 中心周波数 [Hz], Q: 品質係数, fs: サンプリング周波数
+    Biquad designBandpass(double centerFreq, double Q, double fs)
+    {
+        Biquad biq;
+        double w0 = 2.0 * PI * centerFreq / fs;
+        double alpha = std::sin(w0) / (2.0 * Q);
+
+        double b0 = Q * alpha;
+        double b1 = 0.0;
+        double b2 = -Q * alpha;
+        double a0 = 1.0 + alpha;
+        double a1 = -2.0 * std::cos(w0);
+        double a2 = 1.0 - alpha;
+
+        // 正規化
+        biq.b0 = b0 / a0;
+        biq.b1 = b1 / a0;
+        biq.b2 = b2 / a0;
+        biq.a1 = a1 / a0;
+        biq.a2 = a2 / a0;
+
+        biq.reset();
+        return biq;
+    }
+
+    //-------------------------------------
+    // 1 バンド分のフィルタ処理
+    //-------------------------------------
+    std::vector<double> applyBandpass(
+        const std::vector<double>& x, double fc, double fs)
+    {
+        // Q は適当に 4.0 くらい（オクターブ帯域くらいの広さ）
+        double Q = 4.0;
+        Biquad bp = designBandpass(fc, Q, fs);
+
+        std::vector<double> y(x.size());
+        for (size_t n = 0; n < x.size(); ++n) {
+            y[n] = bp.process(x[n]);
+        }
+        return y;
+    }
+
+    std::vector<int> make_range(int start, int end) {
+        std::vector<int> result;
+
+        if (start <= end) {
+            result.reserve(end - start + 1);
+            for (int i = start; i <= end; ++i) {
+                result.push_back(i);
+            }
+        }
+        else {
+            result.reserve(start - end + 1);
+            for (int i = start; i >= end; --i) {
+                result.push_back(i);
+            }
+        }
+
+        return result;
+    }
     
     void show_two_signal(Signal signal1,Signal signal2) {
         unsigned long n = signal1.dataL.size();
@@ -410,6 +495,183 @@ namespace {
                 // spectrum[i] *= 1.0;
             }
         }
+    }
+
+    //--- Hann 窓 FIR ローパスフィルタ設計 ---
+    std::vector<double> designLowpassFIR(int taps, double cutoff, double fs)
+    {
+        std::vector<double> h(taps);
+        int M = taps - 1;
+        double fc = cutoff / fs; // 正規化カットオフ (0〜0.5)
+
+        for (int n = 0; n < taps; ++n) {
+            if (n == M / 2) {
+                h[n] = 2.0 * fc;
+            }
+            else {
+                double x = PI * (n - M / 2);
+                h[n] = sin(2.0 * PI * fc * (n - M / 2)) / x;
+            }
+            // Hann window
+            h[n] *= 0.5 * (1 - cos(2 * PI * n / M));
+        }
+        return h;
+    }
+
+    //--- FIR filtering ---
+    std::vector<double> firFilter(const std::vector<double>& x, const std::vector<double>& h)
+    {
+        int N = x.size();
+        int M = h.size();
+        std::vector<double> y(N, 0.0);
+
+        for (int n = 0; n < N; ++n) {
+            double acc = 0.0;
+            for (int k = 0; k < M; ++k) {
+                int idx = n - k;
+                if (idx >= 0)
+                    acc += h[k] * x[idx];
+            }
+            y[n] = acc;
+        }
+        return y;
+    }
+
+    //--- Downsampling ---
+    std::vector<double> downsample(const std::vector<double>& x, int factor)
+    {
+        std::vector<double> y;
+        for (int i = 0; i < x.size(); i += factor) {
+            y.push_back(x[i]);
+        }
+        return y;
+    }
+
+    //--- サンプルレート変換 ---
+    std::vector<double> resample(const std::vector<double>& input,
+        double F1, double F2)
+    {
+        int factor = (int)(F1 / F2);     // ダウンサンプリング比 (整数前提)
+        double cutoff = F2 / 2.0;        // ローパスカットオフ
+
+        // FIR フィルタ設計
+        int taps = 101; // フィルタ長（必要に応じて調整）
+        auto h = designLowpassFIR(taps, cutoff, F1);
+
+        // フィルタ適用
+        auto filtered = firFilter(input, h);
+
+        // 間引き
+        return downsample(filtered, factor);
+    }
+
+
+    //STIを計算
+    double computeSTI_fromIR_multiband(
+        const std::vector<double>& ir,
+        double fs)
+    {
+        if (ir.empty() || fs <= 0.0) {
+            return 0.0;
+        }
+
+        const size_t N = ir.size();
+
+        // 7 オクターブバンド中心周波数 [Hz]
+        const double bandCenters[7] = {
+            125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0
+        };
+
+        // 14 変調周波数 [Hz] (IEC に準拠した 1/3oct ステップ)
+        const double modulationFreqs[14] = {
+            0.63, 0.80, 1.00, 1.25, 1.60, 2.00, 2.50,
+            3.15, 4.00, 5.00, 6.30, 8.00, 10.0, 12.5
+        };
+
+        // male 用のバンド重要度 α_k （正規化前, IEC の値）
+        double alpha_raw[7] = {
+            0.085, 0.127, 0.230, 0.233, 0.309, 0.224, 0.173
+        };
+
+        // α を合計 1 に正規化して重み w_k として使用
+        double alpha_sum = 0.0;
+        for (int k = 0; k < 7; ++k) alpha_sum += alpha_raw[k];
+        double w[7];
+        for (int k = 0; k < 7; ++k) w[k] = alpha_raw[k] / alpha_sum;
+
+        // バンドごとの MTI
+        double MTI[7] = { 0 };
+
+        // ---- 各バンドごとに処理 ----
+        for (int band = 0; band < 7; ++band) {
+
+            // 1) オクターブバンドでフィルタリング
+            std::vector<double> h_band = applyBandpass(ir, bandCenters[band], fs);
+
+            // 2) エネルギー系列 e[n] = h^2
+            std::vector<double> e(N);
+            double energySum = 0.0;
+            for (size_t n = 0; n < N; ++n) {
+                e[n] = h_band[n] * h_band[n];
+                energySum += e[n];
+            }
+            if (energySum <= 0.0) {
+                // このバンドはエネルギーがほぼゼロ → TI=0 とみなす
+                MTI[band] = 0.0;
+                continue;
+            }
+
+            // 3) 14変調周波数での MTF → TI
+            const int M = 14;
+            double TI_band[14];
+
+            for (int i = 0; i < M; ++i) {
+                double Fm = modulationFreqs[i];
+
+                std::complex<double> acc(0.0, 0.0);
+
+                // 離散積分 : sum e[n] * exp(-j 2π Fm t)
+                for (size_t n = 0; n < N; ++n) {
+                    double t = static_cast<double>(n) / fs;
+                    double phase = -2.0 * PI * Fm * t;
+                    std::complex<double> ex(std::cos(phase), std::sin(phase));
+                    acc += e[n] * ex;
+                }
+
+                double mag = std::abs(acc);
+                double m = mag / energySum; // 0〜1
+
+                // 数値安定性のためにクリップ
+                m = std::max(1e-6, std::min(0.999999, m));
+
+                // MTF → SNR [dB]
+                double snr = 10.0 * std::log10(m / (1.0 - m));
+
+                // SNR を [-15, +15] dB にクリップ (IEC)
+                snr = std::max(-15.0, std::min(15.0, snr));
+
+                // SNR → TI
+                double ti = (snr + 15.0) / 30.0;
+                ti = std::max(0.0, std::min(1.0, ti));
+
+                TI_band[i] = ti;
+            }
+
+            // 4) このバンドの MTI = TI の平均
+            double sumTI = 0.0;
+            for (int i = 0; i < M; ++i) sumTI += TI_band[i];
+            MTI[band] = sumTI / static_cast<double>(M);
+        }
+
+        // 5) 7バンドの MTI を重み w_k で合成 → STI
+        double sti = 0.0;
+        for (int k = 0; k < 7; ++k) {
+            sti += w[k] * MTI[k];
+        }
+
+        // 最終的に 0〜1 にクリップ
+        sti = std::max(0.0, std::min(1.0, sti));
+        return sti;
     }
 
 
