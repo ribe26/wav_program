@@ -21,7 +21,7 @@ public:
 	Signal(vector<double>, double F);
 
 	//データの表示
-	void show();
+	void show(bool saveflag, string dir, string fname);
 	//正規化
 	void normalize();
 
@@ -34,7 +34,7 @@ public:
 	double calc_power();
 
 	//MTFを表示
-	void show_MTF(double freq);
+	void show_MTF(double freq,bool saveflag,string dir,string fname);
 	void calc_MTF(double freq, string filename);
 	vector<double>get_MTF_vector(int endIdx);
 	//ダウンサンプリング 引数分の１にダウンサンプリングする	
@@ -44,7 +44,7 @@ public:
 	void add_zero(long length);
 
 	//IRの長さを2秒に整える。
-	void set_2sec();
+	void set_sec(double second);
 
 
 	//wavファイル読み込み関係---------------------------------------------------------
@@ -65,7 +65,7 @@ public:
 	//waveファイル書き込み--------------------------------------------------------------
 	long wavHeaderWrite(FILE* fpIn);
 	int write16BitWav(FILE* fpOut);
-	int write(const char* outFile);
+	int write(string filename);
 
 	tWaveFormatPcm waveFormatpcm;
 	SWaveFileHeader waveFileheader;

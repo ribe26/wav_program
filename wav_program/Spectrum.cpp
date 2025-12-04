@@ -80,7 +80,7 @@ void Spectrum::FFT(Signal signal) {
 
 
 // スペクトラムを表示する関数
-void Spectrum::show() {
+void Spectrum::show(bool saveflag,string dir,string fname) {
     //std::cout << "Fs: " << Fs << std::endl;
     std::vector<double> plot_x(dataL.size()/2);
     std::vector<double> plot_y(dataL.size()/2);
@@ -101,6 +101,10 @@ void Spectrum::show() {
     matplotlibcpp::xlabel("Modulation Frequency[Hz]", { {"fontsize", "14"} });
     matplotlibcpp::ylabel("PowerSpectrum[dB]", { {"fontsize", "14"} });
     matplotlibcpp::legend({ {"fontsize", "14"} });
+    if (saveflag) {
+        string filename = dir + string("/") + fname + string(".png");
+        matplotlibcpp::save(filename);
+    }
     matplotlibcpp::show();
 }
 
@@ -193,7 +197,7 @@ std::vector<complex<double>> Spectrum::squared_limit_freq(double freq) {
     return tempL;
 }
 
-void Spectrum::show_MTF(double freq) {
+void Spectrum::show_MTF(double freq,bool saveflag,string dir,string fname) {
     double power = this->calc_power();
     std::vector<double> plot_x;
     std::vector<double> plot_y;
@@ -227,6 +231,9 @@ void Spectrum::show_MTF(double freq) {
     matplotlibcpp::xlabel("Modulation Frequency[Hz]", { {"fontsize", "14"} });
     matplotlibcpp::ylabel("MTF", { {"fontsize", "14"} });
     matplotlibcpp::legend({ {"fontsize", "14"} });
-
+    if (saveflag) {
+        string filename = dir + string("/") + fname + string(".png");
+        matplotlibcpp::save(filename);
+    }
     matplotlibcpp::show();
 }

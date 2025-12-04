@@ -70,7 +70,7 @@ Signal::Signal(Spectrum spectrum) {
    }
 
 // 信号を表示する
-void Signal::show() {
+void Signal::show(bool saveflag,string dir,string fname) {
     unsigned long n = dataL.size();
     std::vector<double> plot_x(n);
     std::vector<double> plot_y(n);
@@ -91,6 +91,10 @@ void Signal::show() {
     matplotlibcpp::xlabel("time[second]", { {"fontsize", "14"} });
     matplotlibcpp::ylabel("amplitude", { {"fontsize", "14"} });
     matplotlibcpp::legend({ {"fontsize", "14"} });
+    if (saveflag) {
+        string filename = dir + string("/") + fname + string(".png");
+        matplotlibcpp::save(filename);
+    }
     matplotlibcpp::show();
 }
 
@@ -133,19 +137,17 @@ void Signal::get_after_peak() {
     dataL = tail;
 }
 
-void Signal::set_2sec() {
-    int size = Fs * 2;
+void Signal::set_sec(double second) {
+    int size = Fs * second;
     if (dataL.size() > size) {
         dataL.resize(size);
         dataR.resize(size);
     }
     else if (dataL.size()<size) {
-        cout << "resize 2sec Fs:" << Fs << endl;
         for (int i = 0;dataL.size() < size;i++) {
             dataL.push_back(0.0);
             dataR.push_back(0.0);
         }
-        cout << "resize 2sec size:" << dataL.size() << endl;
     }
 }
 
@@ -158,7 +160,7 @@ void Signal::squared() {
 }
 
 // MTFを表示する
-void Signal::show_MTF(double freq) {
+void Signal::show_MTF(double freq,bool saveflag,string dir,string fname) {
     std::vector<double> squared_signal;
     for (size_t i = 0; i < dataL.size(); i++) {
         squared_signal.push_back(dataL[i] * dataL[i]);
@@ -192,6 +194,10 @@ void Signal::show_MTF(double freq) {
     matplotlibcpp::xlabel("Modulation Frequency[Hz]", { {"fontsize", "14"} });
     matplotlibcpp::ylabel("MTF", { {"fontsize", "14"} });
     matplotlibcpp::legend({ {"fontsize", "14"} });
+    if (saveflag) {
+        string filename = dir + string("/") + fname + string(".png");
+        matplotlibcpp::save(filename);
+    }
     matplotlibcpp::show();
 }
 
@@ -559,8 +565,72 @@ int Signal::write16BitWav(FILE* fpOut) {
     return 0;
 }
 
+template <typename T>
+T clampValue(T v, T lo, T hi) {
+    if (v < lo) return lo;
+    if (v > hi) return hi;
+    return v;
+}
+
+void writeWavMono16(
+    const std::string& filename,
+    const std::vector<double>& data,
+    int sampleRate
+) {
+    const uint16_t numChannels = 1;   // モノラル
+    const uint16_t bitsPerSample = 16;  // 16bit PCM
+    const uint32_t numSamples = static_cast<uint32_t>(data.size());
+
+    const uint32_t byteRate = sampleRate * numChannels * bitsPerSample / 8;
+    const uint16_t blockAlign = numChannels * bitsPerSample / 8;
+    const uint32_t subchunk2Size = numSamples * numChannels * bitsPerSample / 8;
+    const uint32_t chunkSize = 36 + subchunk2Size;
+
+    std::ofstream ofs(filename, std::ios::binary);
+    if (!ofs) {
+        throw std::runtime_error("Failed to open file: " + filename);
+    }
+
+    // ---- RIFFヘッダ ----
+    ofs.write("RIFF", 4);
+    ofs.write(reinterpret_cast<const char*>(&chunkSize), 4);
+    ofs.write("WAVE", 4);
+
+    // ---- fmt チャンク ----
+    ofs.write("fmt ", 4);
+
+    uint32_t subchunk1Size = 16;               // PCMなら16
+    uint16_t audioFormat = 1;                // PCM=1 (リニアPCM)
+    ofs.write(reinterpret_cast<const char*>(&subchunk1Size), 4);
+    ofs.write(reinterpret_cast<const char*>(&audioFormat), 2);
+    ofs.write(reinterpret_cast<const char*>(&numChannels), 2);
+    ofs.write(reinterpret_cast<const char*>(&sampleRate), 4);
+    ofs.write(reinterpret_cast<const char*>(&byteRate), 4);
+    ofs.write(reinterpret_cast<const char*>(&blockAlign), 2);
+    ofs.write(reinterpret_cast<const char*>(&bitsPerSample), 2);
+
+    // ---- data チャンク ----
+    ofs.write("data", 4);
+    ofs.write(reinterpret_cast<const char*>(&subchunk2Size), 4);
+
+    // ---- 波形データ本体 (16bit PCM) ----
+    for (size_t i = 0; i < data.size(); ++i) {
+        double d = data[i];
+        // -1.0〜1.0 にクリップしてから int16_t に変換
+        double clamped = clampValue(d, -1.0, 1.0);
+        int16_t sample = static_cast<int16_t>(clamped * 32767.0);
+        ofs.write(reinterpret_cast<const char*>(&sample), sizeof(sample));
+    }
+
+    ofs.close();
+}
+
+
 // ファイル内容を書き出し
-int Signal::write(const char* outFile) {
+int Signal::write(string filename) {
+    writeWavMono16(filename, dataL, Fs);
+     
+    /*
     FILE* fpOut;
     if ((fopen_s(&fpOut, outFile, "wb")) != 0) {
         fprintf(stderr, "%s をオープンできません.\n", outFile);
@@ -583,7 +653,9 @@ int Signal::write(const char* outFile) {
 
     fclose(fpOut);
     return 0;
-}
+    */
+    return 0;
+    }
 
 
 

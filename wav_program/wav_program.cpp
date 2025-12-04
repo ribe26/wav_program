@@ -12,6 +12,7 @@
 #include "utility_functions.h"
 #include "thesis_functions.h"
 #include "algorithm"
+#include <windows.h>
 
 int main()
 {
@@ -20,15 +21,35 @@ int main()
     int length = 0;         // Length of the sine wave
     double samplingRate = 0; // Sampling rate in Hz
     double MTF_MAX = 15;
+    
 
+    std::string dir = "air_type1_air_phone_stairway_hfrp";   // std::string
 
+    if (CreateDirectoryA(dir.c_str(), NULL)) {   // ANSI版 API を使用
+        std::cout << "ディレクトリ作成成功\n";
+    }
+    else {
+        DWORD err = GetLastError();
+        if (err == ERROR_ALREADY_EXISTS) {
+            std::cout << "既に存在します\n";
+        }
+        else {
+            std::cout << "作成失敗: エラーコード " << err << "\n";
+        }
+    }
 
     //std::vector<double> IR = generateReverbImpulsuse(96000, 1.5, 1, 48000);
 
     //残響を除去したいインパルス応答の読み込み
     //インパルス応答はSignalクラスが持つ変数のdataLというvector<double>型のベクトルで保存されている。
-    Signal c_original("rir/air_type1_air_binaural_lecture_0_1.wav");
-    Signal c("rir/air_type1_air_binaural_lecture_0_1.wav");
+    std::string filename = dir + string(".wav");
+    std::string rir_dir = string("rir/") + dir + string(".wav");
+
+
+    //Signal c_original("usina_main/original.wav");
+    //Signal c("usina_main/filtered.wav");
+    Signal c_original(rir_dir.c_str());
+    Signal c(rir_dir.c_str());
     //Signal c_original(IR, 48000);
     //Signal c(IR, 48000);
 
@@ -40,8 +61,8 @@ int main()
     c_original.normalize();
     c.normalize();
 
-    c.set_2sec();
-    c_original.set_2sec();
+    c.set_sec(1.5);
+    c_original.set_sec(1.5);
 
     //c_original.get_after_peak();
     //c.get_after_peak();
@@ -55,10 +76,10 @@ int main()
 
 
     //c.add_zero(original_length);
-    show_two_signal(c_original, c);
+    show_two_signal(false,c_original, c,dir,"");
 
     //読み込んだインパルス応答の情報を表示
-    c.show();//インパルス応答をプロット
+    c.show(true,dir,"original_IR");//インパルス応答をプロット
     //c.show_MTF(600);//インパルス応答のMTFを引数で指定した数値の変調周波数までプロット
     c.calc_MTF(600, "original.txt");//引数で指定した変調周波数までのMTFをテキストファイルに保存
 
@@ -71,8 +92,8 @@ int main()
     Spectrum C_ORIGINAL(c_original);
 
     //スペクトル情報の表示
-    C.show();//スペクトルをプロット
-    C.show_MTF(MTF_MAX+5.0);
+    C.show(true, dir, "original_IR_Spectrum");//スペクトルをプロット
+    C.show_MTF(MTF_MAX+5.0,true,dir,"original_IR_MTF");
     //初期状態のインパルス応答のエネルギーを計算しておく。
     double original_energy = C.calc_energy();
 
@@ -96,7 +117,7 @@ int main()
     complex<double> init_value(1.0, 0.0);//フィルタHを初期化するための複素数(1.0+0.0i)　全て１で初期化(時間領域ではt=0でパルスが立つ信号にあたる。)
     std::vector<complex<double>>h(C.dataL.size(), init_value);
     Spectrum H(h, samplingRate, length);//フィルタHをspectrumクラスとして定義
-    H.show();//フィルタの初期状態を表示
+    H.show(false,"","");//フィルタの初期状態を表示
     std::cout << "H power:" << H.calc_power() << endl;
     std::cout << "H energy:" << H.calc_energy() << endl;
 
@@ -132,7 +153,7 @@ int main()
     //最適化のループ回数とステップサイズを定義
     int iteration = 20000;
     double step = 1.0;
-    //double step = 0.00000000000000000001;
+    //double step= 0.00000000000000000001;
 
     //フィルタHの最適化を開始
     for (int j = 0; j < iteration; j++) {
@@ -193,9 +214,9 @@ int main()
     H.normalize_power();
     std::cout << "H power:" << H.calc_power() << endl;
     std::cout << "H energy:" << H.calc_energy() << endl;
-    H.show();
+    H.show(true,dir,"filter_spectrum");
     Signal H_inv(H);
-    H_inv.show();
+    H_inv.show(true,dir,"filter_signal");
 
     //フィルタをインパルス応答に畳み込む。
     for (int p = 0; p < C.dataL.size(); p++) {
@@ -214,17 +235,19 @@ int main()
     //c_inv.show_MTF(600);
     //MTFを計算してテキストに出力する
     c_inv.calc_MTF(600, "filtered.txt");
-    c_inv.write("filtered_IR_baptist .wav");
 
 
-    show_two_MTF(c_original, c_inv, MTF_MAX+5.0);
+    show_two_MTF(true,c_original, c_inv, MTF_MAX+5.0,dir,"MTF_comparison");
     c_original.normalize();
     c_inv.normalize();
 
 
-    show_two_signal(c_original, c_inv);
+    show_two_signal(true,c_original, c_inv,dir,"Signal_comparison");
     
-
+    std::string original_save_dir = dir + string("/original.wav");
+    c_original.write(original_save_dir.c_str());
+    std::string save_dir = dir + string("/filtered.wav");
+    c_inv.write(save_dir.c_str());
 
     //元のインパルスと形成したフィルタを畳み込んだインパルスそれぞれの残響時間を表示する。
     rt60original = computeRT20(c_original.dataL, samplingRate);
@@ -237,6 +260,10 @@ int main()
     double STIinv = computeSTI_fromIR_multiband(c_inv.dataL, samplingRate);
     cout << "rt60 c inv:" << rt60inv << endl;
     cout << "STI c inv:" << STIinv << endl;
+
+    vector<double> STI_result = { STIoriginal,STIinv };
+    std::string save_dir_STI = dir + string("/STI_result.txt");
+    writeVectorToFile(save_dir_STI, STI_result);
 
 }
 

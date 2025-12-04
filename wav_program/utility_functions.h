@@ -95,7 +95,7 @@ namespace {
         return result;
     }
     
-    void show_two_signal(Signal signal1,Signal signal2) {
+    void show_two_signal(bool saveflag,Signal signal1, Signal signal2, string save_dir,string fname) {
         unsigned long n = signal1.dataL.size();
         double Fs = signal1.Fs;
         std::vector<double> plot_x(n);
@@ -103,7 +103,7 @@ namespace {
         std::vector<double> plot_y2(n);
 
         for (size_t i = 0; i < n; i++) {
-            plot_x[i] = i/Fs;
+            plot_x[i] = i / Fs;
             plot_y[i] = signal1.dataL[i];
             plot_y2[i] = signal2.dataL[i];
         }
@@ -122,17 +122,22 @@ namespace {
         //style1["markeredgecolor"] = "green";
         style2["linestyle"] = "-";
 
-        matplotlibcpp::plot(plot_x, plot_y,style1);
-        matplotlibcpp::plot(plot_x, plot_y2,style2);
+        matplotlibcpp::plot(plot_x, plot_y, style1);
+        matplotlibcpp::plot(plot_x, plot_y2, style2);
         matplotlibcpp::title("RIR", { {"fontsize", "14"} });
         matplotlibcpp::xlabel("time[second]", { {"fontsize", "14"} });
         matplotlibcpp::ylabel("amplitude", { {"fontsize", "14"} });
         matplotlibcpp::legend({ {"fontsize", "14"} });
+        string filename = save_dir +string("/") + fname + string(".png");
+        if (saveflag)
+        {
+            matplotlibcpp::save(filename);
+        }
         matplotlibcpp::show();
     }
     
 
-    void show_two_MTF(Signal signal1, Signal signal2,double endFreq) {
+    void show_two_MTF(bool saveflag,Signal signal1, Signal signal2,double endFreq, string save_dir, string fname) {
         unsigned long n = signal1.dataL.size();
         double Fs = signal1.Fs;
         double unitFs = Fs / n;
@@ -176,6 +181,11 @@ namespace {
         matplotlibcpp::xlabel("modulation Frequency[Hz]", { {"fontsize", "14"} });
         matplotlibcpp::ylabel("MTF", { {"fontsize", "14"} });
         matplotlibcpp::legend({ {"fontsize", "14"} });
+        string filename = save_dir + string("/") + fname + string(".png");
+        if (saveflag)
+        {
+            matplotlibcpp::save(filename);
+        }
         matplotlibcpp::show();
     }
     
@@ -343,7 +353,7 @@ namespace {
             if (idxStart < 0 && edcDb[i] <= -5.0) {
                 idxStart = i;
             }
-            if (idxStart >= 0 && edcDb[i] <= -25.0) {
+            if (idxStart >= 0 && edcDb[i] <= -15.0) {
                 idxEnd = i;
                 break;
             }
