@@ -80,7 +80,7 @@ void Spectrum::FFT(Signal signal) {
 
 
 // スペクトラムを表示する関数
-void Spectrum::show(bool saveflag,string dir,string fname) {
+void Spectrum::show(bool showflag,bool saveflag,string dir,string fname) {
     //std::cout << "Fs: " << Fs << std::endl;
     std::vector<double> plot_x(dataL.size()/2);
     std::vector<double> plot_y(dataL.size()/2);
@@ -105,7 +105,10 @@ void Spectrum::show(bool saveflag,string dir,string fname) {
         string filename = dir + string("/") + fname + string(".png");
         matplotlibcpp::save(filename);
     }
-    matplotlibcpp::show();
+    if (showflag) {
+        matplotlibcpp::show();
+    }
+    matplotlibcpp::close();
 }
 
 // 複素共役を取る関数
@@ -197,7 +200,7 @@ std::vector<complex<double>> Spectrum::squared_limit_freq(double freq) {
     return tempL;
 }
 
-void Spectrum::show_MTF(double freq,bool saveflag,string dir,string fname) {
+void Spectrum::show_MTF(double freq,bool showflag,bool saveflag,string dir,string fname) {
     double power = this->calc_power();
     std::vector<double> plot_x;
     std::vector<double> plot_y;
@@ -235,5 +238,8 @@ void Spectrum::show_MTF(double freq,bool saveflag,string dir,string fname) {
         string filename = dir + string("/") + fname + string(".png");
         matplotlibcpp::save(filename);
     }
-    matplotlibcpp::show();
+    if (showflag) {
+        matplotlibcpp::show();
+    }
+    matplotlibcpp::close();
 }

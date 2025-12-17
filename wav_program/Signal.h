@@ -21,7 +21,7 @@ public:
 	Signal(vector<double>, double F);
 
 	//データの表示
-	void show(bool saveflag, string dir, string fname);
+	void show(bool showflag,bool saveflag, string dir, string fname);
 	//正規化
 	void normalize();
 
@@ -34,12 +34,12 @@ public:
 	double calc_power();
 
 	//MTFを表示
-	void show_MTF(double freq,bool saveflag,string dir,string fname);
-	void calc_MTF(double freq, string filename);
+	void show_MTF(double freq,bool showflag,bool saveflag,string dir,string fname);
+	void calc_MTF(double freq, string dir, string fname);
 	vector<double>get_MTF_vector(int endIdx);
 	//ダウンサンプリング 引数分の１にダウンサンプリングする	
 	void down_sampling(double freq);
-
+	void up_sampling(double freq);
 	//任意長さになるまでゼロパディング
 	void add_zero(long length);
 

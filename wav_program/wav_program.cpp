@@ -16,14 +16,38 @@
 
 int main()
 {
-
-    // init Parameter
-    int length = 0;         // Length of the sine wave
-    double samplingRate = 0; // Sampling rate in Hz
-    double MTF_MAX = 15;
+    /*
+    vector<std::string> directory_list{
+        "air_type1_air_binaural_booth_0_1",
+        "air_type1_air_binaural_booth_0_2",
+        "air_type1_air_binaural_lecture_0_1",
+        "air_type1_air_binaural_lecture_0_2",
+        "air_type1_air_binaural_lecture_0_3",
+        "air_type1_air_binaural_lecture_0_4",
+        "air_type1_air_binaural_lecture_0_5",
+        "air_type1_air_binaural_lecture_1_4",
+        "air_type1_air_binaural_meeting_0_1",
+        "air_type1_air_binaural_office_0_1",
+        "air_type1_air_binaural_stairway_1_1_0",
+        "air_type1_air_phone_bathroom_hfrp",
+        "air_type1_air_phone_corridor_hfrp",
+        "air_type1_air_phone_kitchen_hfrp",
+        "air_type1_air_phone_lecture_hfrp",
+        "air_type1_air_phone_office_hfrp",
+        "air_type1_air_phone_stairway_hfrp"
+    };
+    */
     
-
-    std::string dir = "air_type1_air_phone_stairway_hfrp";   // std::string
+    
+    vector<std::string> directory_list{
+        "usina_main",
+    };
+    
+    
+    for (int dir_id = 0; dir_id < directory_list.size(); dir_id++) {
+        run_proposed_method(directory_list[dir_id], 50000, 0.1, 15);
+    }
+    /*
 
     if (CreateDirectoryA(dir.c_str(), NULL)) {   // ANSI版 API を使用
         std::cout << "ディレクトリ作成成功\n";
@@ -128,16 +152,31 @@ int main()
 
     double startMTFfreq = 1.0;
     double endMTFfreq = MTF_MAX;//最適化においてMTFを考慮する上限
-    double unitFs = c.Fs / (double)c.dataL.size();
+    double unitFs = C.Fs / (double)C.dataL.size();
     int startIdx = startMTFfreq / unitFs;
     int endIdx = endMTFfreq / unitFs;//MTFの上限周波数がvectorのインデックスの値でどこにあたるかを計算
 
 
-
+    cout << "C unitFs:" << unitFs<<endl;
     //0~endIdxの整数を連番で持つvectorを定義(forループでこのvectorに格納されている添え字の変調周波数において、MTFのフィルタHについての勾配を計算し、最適化を行っている。)
     //std::vector<int> target_index(endIdx + 1);  // サイズn+1のvectorを作成
     //std::iota(target_index.begin(), target_index.end(), 0);
 
+
+    /*
+    vector<double> modulationFreqs = { 0.63, 0.80, 1.00, 1.25, 1.60, 2.00, 2.50,3.15, 4.00, 5.00, 6.30, 8.00, 10.0, 12.5 };
+    vector<int> target_index = NearestFreqIndex(modulationFreqs,unitFs);
+
+    for (int i = 0; i < modulationFreqs.size(); i++) {
+        cout << "index" << i << ",Freq:" << modulationFreqs[i] << endl;
+    }
+
+    for (int i = 0; i < target_index.size();i++) {
+        cout  << "index"<< i <<",Freq:"<< unitFs*target_index[i] << endl;
+    }
+    */
+
+    /*
     std::vector<int> target_index = make_range(startIdx, endIdx);
 
 
@@ -151,8 +190,8 @@ int main()
 
 
     //最適化のループ回数とステップサイズを定義
-    int iteration = 20000;
-    double step = 1.0;
+    int iteration = 50000;
+    double step = 0.01;
     //double step= 0.00000000000000000001;
 
     //フィルタHの最適化を開始
@@ -176,7 +215,7 @@ int main()
 
             G.set_energy(original_energy);
             */
-
+/*
             for (int m = 0; m < C.dataL.size(); m++) {
                 int idx = (target_index[k] - m + C.dataL.size()) % C.dataL.size();
                 //cout << "(m,idx):(" << m << "," << idx << ")" << endl;
@@ -264,7 +303,7 @@ int main()
     vector<double> STI_result = { STIoriginal,STIinv };
     std::string save_dir_STI = dir + string("/STI_result.txt");
     writeVectorToFile(save_dir_STI, STI_result);
-
+    */
 }
 
 

@@ -31,12 +31,12 @@ public:
 	//複素共役をとる
 	void Conj();
 	//振幅スペクトルをプロット
-	void show(bool saveflag, string dir, string fname);
+	void show(bool showflag,bool saveflag, string dir, string fname);
 
 	void squared();
 	std::vector<complex<double>> squared_limit_freq(double freq);
 
-	void show_MTF(double freq, bool saveflag, string dir, string fname);
+	void show_MTF(double freq,bool showflag, bool saveflag, string dir, string fname);
 
 	tWaveFormatPcm waveFormatpcm;
 	SWaveFileHeader waveFileheader;

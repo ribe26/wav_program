@@ -70,7 +70,7 @@ Signal::Signal(Spectrum spectrum) {
    }
 
 // 信号を表示する
-void Signal::show(bool saveflag,string dir,string fname) {
+void Signal::show(bool showflag,bool saveflag,string dir,string fname) {
     unsigned long n = dataL.size();
     std::vector<double> plot_x(n);
     std::vector<double> plot_y(n);
@@ -95,7 +95,10 @@ void Signal::show(bool saveflag,string dir,string fname) {
         string filename = dir + string("/") + fname + string(".png");
         matplotlibcpp::save(filename);
     }
-    matplotlibcpp::show();
+    if (showflag) {
+        matplotlibcpp::show();
+    }
+    matplotlibcpp::close();
 }
 
 // 正規化
@@ -160,7 +163,7 @@ void Signal::squared() {
 }
 
 // MTFを表示する
-void Signal::show_MTF(double freq,bool saveflag,string dir,string fname) {
+void Signal::show_MTF(double freq,bool showflag,bool saveflag,string dir,string fname) {
     std::vector<double> squared_signal;
     for (size_t i = 0; i < dataL.size(); i++) {
         squared_signal.push_back(dataL[i] * dataL[i]);
@@ -198,11 +201,14 @@ void Signal::show_MTF(double freq,bool saveflag,string dir,string fname) {
         string filename = dir + string("/") + fname + string(".png");
         matplotlibcpp::save(filename);
     }
-    matplotlibcpp::show();
+    if (showflag) {
+        matplotlibcpp::show();
+    }
+    matplotlibcpp::close();
 }
 
 // MTFを計算する
-void Signal::calc_MTF(double freq, string filename) {
+void Signal::calc_MTF(double freq, string dir, string fname) {
     std::vector<double> squared_signal;
     for (size_t i = 0; i < dataL.size(); i++) {
         squared_signal.push_back(dataL[i] * dataL[i]);
@@ -222,6 +228,7 @@ void Signal::calc_MTF(double freq, string filename) {
     for (size_t i = 0; i < endIdx; i++) {
         plot_y.push_back(abs(G.dataL[i]) / power);
     }
+    string filename = dir + string("/") + fname + string(".txt");
     writeVectorToFile(filename, plot_y);
 }
 
@@ -274,6 +281,30 @@ void Signal::down_sampling(double Fs_in) {
 
     std::vector<double> new_dataL = resample(dataL, Fs, Fs_in);
     std::vector<double> new_dataR = resample(dataR, Fs, Fs_in);
+    dataL = new_dataL;
+    dataR = new_dataR;
+    Fs = Fs_in;
+}
+
+void Signal::up_sampling(double Fs_in) {
+    /*
+    Fs = Fs / ratio;
+    std::vector<double> new_dataL;
+    std::vector<double> new_dataR;
+
+    for (size_t i = 0; i < dataL.size(); i++) {
+        if (i % ratio == 0) {
+            new_dataL.push_back(dataL[i]);
+            new_dataR.push_back(dataR[i]);
+        }
+    }
+
+    dataL = new_dataL;
+    dataR = new_dataR;
+    */
+
+    std::vector<double> new_dataL = upsample(dataL, Fs, Fs_in);
+    std::vector<double> new_dataR = upsample(dataR, Fs, Fs_in);
     dataL = new_dataL;
     dataR = new_dataR;
     Fs = Fs_in;

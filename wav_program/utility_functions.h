@@ -95,7 +95,7 @@ namespace {
         return result;
     }
     
-    void show_two_signal(bool saveflag,Signal signal1, Signal signal2, string save_dir,string fname) {
+    void show_two_signal(bool showflag,bool saveflag,Signal signal1, Signal signal2, string save_dir,string fname) {
         unsigned long n = signal1.dataL.size();
         double Fs = signal1.Fs;
         std::vector<double> plot_x(n);
@@ -133,11 +133,14 @@ namespace {
         {
             matplotlibcpp::save(filename);
         }
-        matplotlibcpp::show();
+        if (showflag) {
+            matplotlibcpp::show();
+        }
+        matplotlibcpp::close();
     }
     
 
-    void show_two_MTF(bool saveflag,Signal signal1, Signal signal2,double endFreq, string save_dir, string fname) {
+    void show_two_MTF(bool showflag,bool saveflag,Signal signal1, Signal signal2,double endFreq, string save_dir, string fname) {
         unsigned long n = signal1.dataL.size();
         double Fs = signal1.Fs;
         double unitFs = Fs / n;
@@ -186,7 +189,10 @@ namespace {
         {
             matplotlibcpp::save(filename);
         }
-        matplotlibcpp::show();
+        if (showflag) {
+            matplotlibcpp::show();
+        }
+        matplotlibcpp::close();
     }
     
     
@@ -682,6 +688,60 @@ namespace {
         // 最終的に 0〜1 にクリップ
         sti = std::max(0.0, std::min(1.0, sti));
         return sti;
+    }
+
+
+    std::vector<int> NearestFreqIndex(const std::vector<double>& target_freq, double unitFs)
+    {
+        std::vector<int> indices;
+        cout << "target_freq size:" << target_freq.size() << endl;
+        for (int i = 0; i < target_freq.size();i++) {
+            //cout << "target:" << i << endl;
+            // 最寄りの k*unitFs になる k を四捨五入で求める
+            // (kは負にもなり得るので、必要なら後段で clamp してください)
+            double k_real = target_freq[i] / unitFs;
+            int k_ll = static_cast<int>(std::llround(k_real));
+            indices.push_back((int)k_ll);
+
+            cout << "k_real" << k_real << endl;
+            cout << "index" << k_ll << endl;
+
+        }
+
+        return indices;
+    }
+
+
+    std::vector<double> upsample_zero_insert(const std::vector<double>& x, int L)
+    {
+        std::vector<double> u;
+        u.resize(x.size() * L, 0.0);
+        for (size_t i = 0; i < x.size(); ++i) {
+            u[i * L] = x[i];
+        }
+        return u;
+    }
+
+    std::vector<double> upsample(const std::vector<double>& input, double F1, double F2)
+    {
+        int L = (int)std::llround(F2 / F1);  // 整数倍率前提
+        // アップ後のサンプリング周波数
+        double Fs_up = F1 * L;
+
+        // 画像成分を落とすLPF: cutoff = F1/2（元のナイキスト）
+        double cutoff = F1 / 2.0;
+
+        int taps = 101;
+        auto h = designLowpassFIR(taps, cutoff, Fs_up);
+
+        // アップサンプル（ゼロ挿入）
+        auto u = upsample_zero_insert(input, L);
+
+        // LPF（※ゲイン補正として L 倍する流儀が多い）
+        auto y = firFilter(u, h);
+        for (auto& v : y) v *= L;
+
+        return y;
     }
 
 

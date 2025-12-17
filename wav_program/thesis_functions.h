@@ -1,205 +1,273 @@
-#pragma once
+#include <iostream>
+#include "Signal.h"
+#include "math.h"
+#include "FFT.h"
+#include "matplotlibcpp.h"
 #include <vector>
-#include <complex>
-#include <cmath>
+#include "Spectrum.h"
 #include "MatrixCalculation.h"
-namespace {
-	std::vector<vector<complex<double>>> calcDdashk(std::vector<std::complex<double>>c, std::vector<vector<complex<double>>> Dk) {
-		std::vector<vector<complex<double>>> output;
-		std::vector<vector<complex<double>>> diagC = toDiagonalMatrix(c);
-		std::vector<vector<complex<double>>> diagConjC = toDiagonalConjMatrix(c);
-		output = multiply2D2D(diagConjC, Dk);
-		output = multiply2D2D(output, diagC);
-		return output;
-	}
+#include "utility_functions.h"
+#include "algorithm"
+#include <windows.h>
 
-	std::complex<double> calcLamda(std::vector<std::complex<double>> H, std::vector<std::vector<std::complex<double>>> Ddash) {
-		std::complex<double> output;
-		std::vector<std::complex<double>> conjH(H.size()); 
-		conjH=vectorConj(H);
-		
-		std::vector<std::complex<double>> calc = multiply1D2D(conjH, Ddash);
-		output = multiply1D1D(calc, H);
-		
-		//printComplexVector(conjH);
-		//printMatrix2(Ddash);
-		//printComplexVector(calc);
-		//cout << output <<endl;
-		//output /= abs(output);
-		output = conj(output);
-		return output;
-	}
+namespace{
+    void run_proposed_method(std::string dir, int iteration,double step,double MTF_MAX) {
+            // init Parameter
+            int length = 0;         // Length of the sine wave
+            double samplingRate = 0; // Sampling rate in Hz
 
-	void renewFilter(double mu, std::complex<double> lamda, std::vector<std::vector<std::complex<double>>> Ddash, std::vector<std::complex<double>>* H) {
-		int N = Ddash.size();       // Number of rows in the matrix
-		int M = Ddash[0].size();    // Number of columns in the matrix
-
-		if (H->size() != M) {
-			std::cerr << "Error: Incompatible dimensions for 1D-2D multiplication." << std::endl;
-			exit(1);
-		}
-
-
-		std::vector<std::complex<double>> tempH = *H;
-		
-
-		for (int j = 0; j < N; ++j) {
-			std::complex<double> calc = { 0,0 };
-			for (int i = 0; i < M; i++) {
-				calc+= tempH[i] * Ddash[j][i];
-			}
-			calc *= lamda*mu;
-			(*H)[j] += calc;
-		}
-		
-
-		double power = 0;
-		for (int i = 0; i < H->size(); i++) {
-			power += abs((*H)[i]);
-		}
-
-		double ratio = power;
-		for (int i = 0; i < H->size(); i++) {
-			(*H)[i]/=ratio;
-		}
-		
-
-	}
-
-
-    /*
-    void deReverbe(std::vector<double> rir, double startFs, double endFs, int FilterLength,double minFm,double RT) {
-        int length = 48000;         // Length of the sine wave
-        double samplingRate = 48000.0; // Sampling rate in Hz
-
-
-        Signal c(rir, samplingRate);
-        Signal c2 = c;
-
-        char filenameC[100];
-        sprintf_s(filenameC,sizeof(filenameC), "original%f_%f_%d_%f_%f.txt", startFs, endFs, FilterLength, minFm, RT);
-        string filename(filenameC);
-        c.calc_MTF(20,filename);
-
-
-        double rt60original = computeRT20(c.dataL, samplingRate);
-        c2.squared();
-        Spectrum C(c);
-        Spectrum CT(c);
-        CT.Conj();
-        Spectrum C2(c2);
-
-        //単位インデックスあたりの周波数
-        double unitFs = samplingRate / C.dataL.size();
-        //どの帯域を切り抜くか
-        int startIdx = 0;
-        int endIdx = 0;
-        while (startIdx * unitFs < startFs) {
-            startIdx++;
-        }
-
-        while (endIdx * unitFs < endFs) {
-            endIdx++;
-        }
-        vector<int> startIndexes;
-        vector<int> endIndexes;
-        while (startIdx < endIdx) {
-            startIndexes.push_back(startIdx);
-            startIdx += FilterLength;
-            endIndexes.push_back(startIdx - 1);
-        }
-
-        //MTFを考慮する範囲
-        int maxFm = 20;
-        int minMTFidx = 0;
-        while (minMTFidx * unitFs < minFm) {
-            minMTFidx++;
-        }
-
-        int maxMTFidx = 0;
-        while (maxMTFidx * unitFs < maxFm) {
-            maxMTFidx++;
-        }
-        
-
-
-        //cout << c.dataL.size() <<"-,-" << startIndexes[0] << "," << endIndexes[0] << "," << minMTFidx << "," << maxMTFidx << endl;
-        //フィルタ形成パラメータ
-        double mu = 0.1;
-        int l = 20;
-            std::vector<std::complex<double>>Filters;
-
-            for (int bandIdx = 0; bandIdx < startIndexes.size(); bandIdx++) {
-                //cout << "band" << bandIdx << endl;
-                std::vector<std::complex<double>>limitedC = limitVector(C.dataL, startIndexes[bandIdx], endIndexes[bandIdx]);
-
-                std::vector<std::vector<std::vector<std::complex<double>>>> Ddash;
-                for (int i = minMTFidx; i < maxMTFidx; i++) {
-                    vector<vector<std::complex<double>>> Dk = createLimitedD(C.dataL.size(), i, startIndexes[bandIdx], endIndexes[bandIdx]);
-                    vector<vector<std::complex<double>>> calc1 = calcDdashk(limitedC, Dk);
-                    Ddash.push_back(calc1);
-                }
-                //cout << "done calc Ddash" << endl;
-                std::vector<std::complex<double>> H(FilterLength, { 1.0,0.0 });
-                for (int k = 0; k < l; k++) {
-                    for (int i = 0; i < maxMTFidx - minMTFidx; i++) {
-                        std::complex<double> lamda = calcLamda(H, Ddash[i]);
-                        renewFilter(mu, lamda, Ddash[i], &H);
-                    }
-                }
-
-                if (bandIdx == 0) {
-                    Filters = H;
+            if (CreateDirectoryA(dir.c_str(), NULL)) {   // ANSI版 API を使用
+                std::cout << "ディレクトリ作成成功\n";
+            }
+            else {
+                DWORD err = GetLastError();
+                if (err == ERROR_ALREADY_EXISTS) {
+                    std::cout << "既に存在します\n";
                 }
                 else {
-                    std::copy(H.begin(), H.end(), std::back_inserter(Filters));
+                    std::cout << "作成失敗: エラーコード " << err << "\n";
                 }
             }
 
+            //std::vector<double> IR = generateReverbImpulsuse(96000, 1.5, 1, 48000);
 
-            std::vector<std::complex<double>> Purpose_Filter(C.dataL.size(), { 1.0,0.0 });
-            int cnt = 0;
-            for (int i = startIndexes.front(); i <= endIndexes.back(); i++) {
-                Purpose_Filter[i] = Filters[cnt];
-                Purpose_Filter[Purpose_Filter.size() - i - 1] = Filters[cnt];
-                cnt++;
-            }
+            //残響を除去したいインパルス応答の読み込み
+            //インパルス応答はSignalクラスが持つ変数のdataLというvector<double>型のベクトルで保存されている。
+            std::string filename = dir + string(".wav");
+            std::string rir_dir = string("rir/") + dir + string(".wav");
 
-            double power = 0;
-            for (int i = 0; i < Purpose_Filter.size(); i++) {
-                power += abs(Purpose_Filter[i]);
-            }
+            //Signal c_original("usina_main/original.wav");
+            //Signal c("usina_main/filtered.wav");
+            Signal c_original(rir_dir.c_str());
+            Signal c(rir_dir.c_str());
+            //Signal c_original(IR, 48000);
+            //Signal c(IR, 48000);
 
-            double ratio = power;
-            for (int i = 0; i < Purpose_Filter.size(); i++) {
-                Purpose_Filter[i] /= ratio;
-            }
+            long original_length = c.dataL.size();
+
+            //c.down_sampling(16000.0);
+            //c_original.down_sampling(16000.0);
+
+            c.up_sampling(48000.0);
+            c_original.up_sampling(48000.0);
+            c_original.normalize();
+            c.normalize();
+
+            c.set_sec(1.5);
+            c_original.set_sec(1.5);
+
+            //c_original.get_after_peak();
+            //c.get_after_peak();
+            //long AP_length = c.dataL.size();
+
+
+            //c_original.write("IR_alcuin_AP_48000Hz.wav");
+
+            //show_two_signal(c_original, c);
+            //show_two_MTF(c_original, c,MTF_MAX);
+            //c.add_zero(original_length);
+            show_two_signal(false,false, c_original, c, dir, "");
+
+            //読み込んだインパルス応答の情報を表示
+            c.show(false,true, dir, "original_IR");//インパルス応答をプロット
+            //c.show_MTF(600);//インパルス応答のMTFを引数で指定した数値の変調周波数までプロット
+            c.calc_MTF(600, dir, "original");//引数で指定した変調周波数までのMTFをテキストファイルに保存
+
+            //元のインパルスと形成したフィルタを畳み込んだインパルスそれぞれの残響時間を表示する。
+
+
+            //読み込んだインパルス応答をスペクトルに変換
+            //スペクトルははSpectrumクラスが持つ変数のdataLというvector<complex<double>>型のベクトルで保存されている。
+            Spectrum C(c);
+            Spectrum C_ORIGINAL(c_original);
+
+            //スペクトル情報の表示
+            C.show(false,true, dir, "original_IR_Spectrum");//スペクトルをプロット
+            C.show_MTF(MTF_MAX + 5.0,false, true, dir, "original_IR_MTF");
+            //初期状態のインパルス応答のエネルギーを計算しておく。
+            double original_energy = C.calc_energy();
+
+            //読み込んだインパルス応答の長さ、サンプリング周波数を変数に保存しておく。
+            length = c.dataL.size();
+            samplingRate = c.Fs;
+            std::cout << "Fs" << c.Fs << endl;
+
+            //元のインパルスと形成したフィルタを畳み込んだインパルスそれぞれの残響時間を表示する。
+            double rt60original = computeRT20(c_original.dataL, samplingRate);
+            double STIoriginal = computeSTI_fromIR_multiband(c_original.dataL, samplingRate);
+            std::cout << "rt60 c original:" << rt60original << endl;
+            std::cout << "STI c original:" << STIoriginal << endl;
 
 
 
-            for (int i = 0; i < C.dataL.size(); i++) {
-                C.dataL[i] *= Purpose_Filter[i];
-            }
-            Signal out(C);
-            out.normalize();
 
-            double rt60filtered = calculateRT60(out.dataL, samplingRate);
+
+
+            //フィルタHをここで定義、これを更新して最後に畳み込むことでインパルス応答の残響時間抑制を狙う。
+            complex<double> init_value(1.0, 0.0);//フィルタHを初期化するための複素数(1.0+0.0i)　全て１で初期化(時間領域ではt=0でパルスが立つ信号にあたる。)
+            std::vector<complex<double>>h(C.dataL.size(), init_value);
+            Spectrum H(h, samplingRate, length);//フィルタHをspectrumクラスとして定義
+            H.show(false,false, "", "");//フィルタの初期状態を表示
+            std::cout << "H power:" << H.calc_power() << endl;
+            std::cout << "H energy:" << H.calc_energy() << endl;
+
+
+            //最適化のパラメータを定義
+
+
+
+            double startMTFfreq = 0;
+            double endMTFfreq = MTF_MAX;//最適化においてMTFを考慮する上限
+            double unitFs = C.Fs / (double)C.dataL.size();
+            int startIdx = startMTFfreq / unitFs;
+            int endIdx = endMTFfreq / unitFs;//MTFの上限周波数がvectorのインデックスの値でどこにあたるかを計算
+
+
+            std::cout << "C unitFs:" << unitFs << endl;
+            //0~endIdxの整数を連番で持つvectorを定義(forループでこのvectorに格納されている添え字の変調周波数において、MTFのフィルタHについての勾配を計算し、最適化を行っている。)
+            //std::vector<int> target_index(endIdx + 1);  // サイズn+1のvectorを作成
+            //std::iota(target_index.begin(), target_index.end(), 0);
+
+
             
-            sprintf_s(filenameC, sizeof(filenameC), "filtered%f_%f_%d_%f_%f.txt", startFs, endFs, FilterLength, minFm, RT);
-            string filename2(filenameC);
-            out.calc_MTF(20, filename2);
+            //vector<double> modulationFreqs = { 0.63, 0.80, 1.00, 1.25, 1.60, 2.00, 2.50,3.15, 4.00, 5.00, 6.30, 8.00, 10.0, 12.5 };
+            //vector<int> target_index = NearestFreqIndex(modulationFreqs,unitFs);
 
-
-            // double startFs, double endFs, double FilterLength,double minFm
-            if (rt60original > rt60filtered) {
-                cout << "-----------------------------" << endl;
-                cout << "startFs" << startFs<<endl;
-                cout << "endFs" << endFs << endl;
-                cout << "FilterLength" << FilterLength << endl;
-                cout << "minFm" << minFm << endl;
-                cout << "RT" << RT << endl;
-                cout << "-----------------------------" << endl;
+            /*
+            for (int i = 0; i < modulationFreqs.size(); i++) {
+                cout << "index" << i << ",Freq:" << modulationFreqs[i] << endl;
             }
-        }
-        */
+
+            for (int i = 0; i < target_index.size();i++) {
+                cout  << "index"<< i <<",Freq:"<< unitFs*target_index[i] << endl;
+            }
+            */
+
+            std::vector<int> target_index = make_range(startIdx, endIdx);
+
+            //フィルタ計算における暫定の値を保存するための変数やクラス
+            complex<double> complex_zero(0.0, 0.0);
+            std::vector<complex<double>>H_step(C.dataL.size(), complex_zero);
+            std::vector<complex<double>>G_temp(C.dataL.size(), complex_zero);
+            Spectrum G(G_temp, samplingRate, length);
+
+
+            //最適化のループ回数とステップサイズを定義
+            //int iteration = 50000;
+            //double step = 0.01;
+            //double step= 0.00000000000000000001;
+
+            //フィルタHの最適化を開始
+            for (int j = 0; j < iteration; j++) {
+                if (j % 100 == 0) { std::cout << "iteration:" << j << endl; }
+                //cout << "H power:" << H.calc_energy() << endl;
+                std::fill(G_temp.begin(), G_temp.end(), complex_zero);
+                for (int k = 0; k < target_index.size(); k++) {
+
+                    /*
+                    if (k % 2 == 1) {
+                        continue;
+                    }
+                    */
+
+                    /*
+                    for (int i = 0; i < G.dataL.size(); i++) {
+                        G.dataL[i] = C.dataL[i] * H.dataL[i];
+                        //G.dataL[G.dataL.size() - i] = conj(G.dataL[i]);
+                    }
+
+                    G.set_energy(original_energy);
+                    */
+
+                    for (int m = 0; m < C.dataL.size(); m++) {
+                        int idx = (target_index[k] - m + C.dataL.size()) % C.dataL.size();
+                        //cout << "(m,idx):(" << m << "," << idx << ")" << endl;
+                        //G_temp[target_index[k]] += (G.dataL[m] * G.dataL[idx]);
+                        G_temp[target_index[k]] = C.dataL[m] * C.dataL[idx] * H.dataL[m] * H.dataL[idx];
+                    }
+
+
+                    G_temp[target_index[k]] /= (double)G.dataL.size();
+                    //G_temp[target_index[k]] = G.dataL[target_index[k]];
+                    //double div = (C.dataL.size() * abs(G_temp[target_index[k]]));
+                    //double div = C.dataL.size()/2.0;
+                    double div = 1.0;
+                    for (int p = 0; p < C.dataL.size() / 2; p++) {
+                        int idx = (target_index[k] - p + C.dataL.size()) % C.dataL.size();
+                        //フィルタHの各周波数についての目的関数の勾配を計算
+                        //H_step[p] += step * (G_temp[target_index[k]] * conj(C.dataL[p]) * conj(C.dataL[idx]) * conj(H.dataL[idx])) / div;
+                        H_step[p] += step * (G_temp[target_index[k]] * conj(C.dataL[p]) * conj(C.dataL[idx]) * conj(H.dataL[idx])) / div;
+                        //H_step[p] += step * conj(G_temp[k]) * C.dataL[p] * C.dataL[idx] * H.dataL[idx];
+                        //H_step[p] += step * (conj(H.dataL[p])*abs(C.dataL[p]*C.dataL[p]));
+
+                    }
+                }
+                //フィルタ更新
+                for (int p = 0; p < C.dataL.size() / 2; p++) {
+                    H.dataL[p] += H_step[p];
+                    H.dataL[H.dataL.size() - p] = conj(H.dataL[p]);
+                }
+                //フィルタのエネルギーが初期状態と同様になるように調節
+                H.normalize_power();
+                std::fill(H_step.begin(), H_step.end(), complex_zero);
+            }
+
+            //完成したフィルタを表示
+            H.normalize_power();
+            std::cout << "H power:" << H.calc_power() << endl;
+            std::cout << "H energy:" << H.calc_energy() << endl;
+            H.show(false,true, dir, "filter_spectrum");
+            Signal H_inv(H);
+            H_inv.show(false,true, dir, "filter_signal");
+
+            //フィルタをインパルス応答に畳み込む。
+            for (int p = 0; p < C.dataL.size(); p++) {
+                C.dataL[p] = C_ORIGINAL.dataL[p] * H.dataL[p];
+                //if (p > C.dataL.size() / 2 - 200 && p < C.dataL.size() / 2) { cout << H.dataL[p] << endl; }
+            }
+            //畳み込んだ結果が元のインパルス応答のエネルギーと同様になるように調節。
+            C.set_energy(C_ORIGINAL.calc_energy());
+            //畳み込んだ結果のインパルス応答のスペクトルを表示
+            //C.show();
+            //C.show_MTF(20);
+
+            //時間領域に逆変換して表示
+            Signal c_inv(C);
+            //c_inv.show();
+            //c_inv.show_MTF(600);
+            //MTFを計算してテキストに出力する
+            c_inv.calc_MTF(600, dir ,"filtered");
+            show_two_MTF(false,true, c_original, c_inv, MTF_MAX + 5.0, dir, "MTF_comparison");
+            c_original.normalize();
+            c_inv.normalize();
+
+
+            show_two_signal(false,true, c_original, c_inv, dir, "Signal_comparison");
+
+            std::string original_save_dir = dir + string("/original.wav");
+            c_original.write(original_save_dir.c_str());
+            std::string save_dir = dir + string("/filtered.wav");
+            c_inv.write(save_dir.c_str());
+
+            //元のインパルスと形成したフィルタを畳み込んだインパルスそれぞれの残響時間を表示する。
+            rt60original = computeRT20(c_original.dataL, samplingRate);
+            STIoriginal = computeSTI_fromIR_multiband(c_original.dataL, samplingRate);
+            std::cout << "rt60 c original:" << rt60original << endl;
+            std::cout << "STI c original:" << STIoriginal << endl;
+
+            //元のインパルスと形成したフィルタを畳み込んだインパルスそれぞれの残響時間を表示する。
+            double rt60inv = computeRT20(c_inv.dataL, samplingRate);
+            double STIinv = computeSTI_fromIR_multiband(c_inv.dataL, samplingRate);
+            std::cout << "rt60 c inv:" << rt60inv << endl;
+            std::cout << "STI c inv:" << STIinv << endl;
+
+            vector<double> STI_result = { STIoriginal,STIinv };
+            std::string save_dir_STI = dir + string("/STI_result.txt");
+            writeVectorToFile(save_dir_STI, STI_result);
+    }
+
+
 }
+
+
+
